@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "20892518320",
+    "project_id": "levetor-hub-1535a",
+    "storage_bucket": "levetor-hub-1535a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:20892518320:android:0bb5b175240817d5437875",
+        "android_client_info": {
+          "package_name": "com.example.levetor_hub_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC2P72KTb_F1P1oT5sVoVOsAHcqNjDtaOw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
