@@ -34,11 +34,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     super.dispose();
   }
 
-  // =========================================================
+    // =========================================================
   // PLACE ORDER + START PAYMENT
   // =========================================================
 
   Future<void> _placeOrder() async {
+    FocusScope.of(context).unfocus();
+
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -58,6 +60,41 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
 
+    final customerProvider =
+        context.read<CustomerProvider>();
+
+    final customerId =
+        customerProvider.customerId;
+
+    // =======================================================
+    // PAYMENT REQUIRES A LOGGED-IN CUSTOMER
+    // =======================================================
+
+    if (customerId == null || customerId <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please login again before making a payment.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final hasToken =
+        await ApiService.hasAuthToken();
+
+    if (!hasToken) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Your login session is missing. Please login again.',
+          ),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isPlacingOrder = true;
     });
@@ -70,12 +107,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         };
       }).toList();
 
-      final customerId =
-          context.read<CustomerProvider>().customerId;
-
-      // -------------------------------------------------------
-      // CREATE ORDER
-      // -------------------------------------------------------
+      // =======================================================
+      // CREATE AUTHENTICATED ORDER
+      // =======================================================
 
       final result = await ApiService.createOrder(
         customerId: customerId,
@@ -94,17 +128,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         );
       }
 
-      final int parsedOrderId = int.parse(
-        orderId.toString(),
+      final int parsedOrderId =
+          int.parse(orderId.toString());
+
+      debugPrint(
+        'Authenticated customer: $customerId',
       );
 
       debugPrint(
         'Order created: $parsedOrderId',
       );
 
-      // -------------------------------------------------------
+      // =======================================================
       // INITIALIZE PAYSTACK
-      // -------------------------------------------------------
+      // =======================================================
 
       final payment =
           await ApiService.initializePayment(
@@ -124,7 +161,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         );
       }
 
-      if (reference == null || reference.isEmpty) {
+      if (reference == null ||
+          reference.isEmpty) {
         throw Exception(
           'Paystack payment reference was not returned.',
         );
@@ -142,15 +180,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _isPlacingOrder = false;
       });
 
-      // -------------------------------------------------------
+      // =======================================================
       // OPEN PAYSTACK
-      // -------------------------------------------------------
+      // =======================================================
 
-      final paymentUrl = Uri.parse(
-        authorizationUrl,
-      );
+      final paymentUrl =
+          Uri.parse(authorizationUrl);
 
-      final launched = await launchUrl(
+      final launched =
+          await launchUrl(
         paymentUrl,
         mode: LaunchMode.externalApplication,
       );
@@ -165,9 +203,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         return;
       }
 
-      // -------------------------------------------------------
+      // =======================================================
       // WAIT FOR USER TO RETURN
-      // -------------------------------------------------------
+      // =======================================================
 
       await _showPaymentVerificationDialog(
         orderId: parsedOrderId,
@@ -186,14 +224,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         SnackBar(
           backgroundColor: Colors.red,
           content: Text(
-            'Payment setup failed:\n$e',
+            'Payment setup failed:\n'
+            '${e.toString().replaceFirst(
+              'Exception: ',
+              '',
+            )}',
           ),
-          duration: const Duration(seconds: 5),
+          duration: const Duration(seconds: 6),
         ),
       );
     }
   }
-
   // =========================================================
   // PAYMENT VERIFICATION DIALOG
   // =========================================================

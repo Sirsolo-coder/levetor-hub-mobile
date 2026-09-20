@@ -18,7 +18,20 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   static const Color skyBlue = Color(0xFF29B6F6);
   static const Color darkBlue = Color.fromARGB(255, 167, 189, 201);
+@override
+void initState() {
+  super.initState();
 
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!mounted) return;
+
+    final provider = context.read<ProductProvider>();
+
+    if (!provider.isLoading && provider.products.isEmpty) {
+      provider.loadProducts();
+    }
+  });
+}
   String _searchQuery = '';
   String _selectedCategory = 'All';
 
@@ -537,40 +550,43 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildProductsGrid(List<Product> products) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        int columns = 2;
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      int columns = 2;
 
-        if (constraints.maxWidth >= 1100) {
-          columns = 4;
-        } else if (constraints.maxWidth >= 700) {
-          columns = 3;
-        }
+      if (constraints.maxWidth >= 1100) {
+        columns = 4;
+      } else if (constraints.maxWidth >= 700) {
+        columns = 3;
+      }
 
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(
-            16,
-            0,
-            16,
-            100,
-          ),
-          itemCount: products.length,
-          gridDelegate:
-              SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 0.46,
-          ),
-          itemBuilder: (context, index) {
-            return _buildProductCard(products[index]);
-          },
-        );
-      },
-    );
-  }
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          16,
+          0,
+          16,
+          100,
+        ),
+        itemCount: products.length,
+        gridDelegate:
+            SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: columns,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+
+          // Increased card height to prevent
+          // Bottom overflow on smaller phones.
+          childAspectRatio: 0.40,
+        ),
+        itemBuilder: (context, index) {
+          return _buildProductCard(products[index]);
+        },
+      );
+    },
+  );
+}
 
   Widget _buildEmptyState() {
     return Padding(

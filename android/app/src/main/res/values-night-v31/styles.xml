@@ -10,7 +10,7 @@
         </item>
 
         <item name="android:windowSplashScreenAnimatedIcon">
-            @mipmap/ic_launcher
+            @drawable/levetor_l
         </item>
 
         <item name="android:windowSplashScreenIconBackgroundColor">

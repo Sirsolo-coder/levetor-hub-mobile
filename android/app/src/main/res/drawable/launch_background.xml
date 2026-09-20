@@ -4,15 +4,7 @@
     <item android:drawable="@android:color/white" />
 
     <item
-        android:left="24dp"
-        android:top="24dp"
-        android:right="24dp"
-        android:bottom="24dp">
-
-        <bitmap
-            android:gravity="center"
-            android:src="@drawable/levetor_logo" />
-
-    </item>
+        android:gravity="center"
+        android:drawable="@drawable/levetor_l" />
 
 </layer-list>

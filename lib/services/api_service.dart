@@ -1,15 +1,114 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/customer.dart';
 import '../models/order.dart';
 import '../models/product.dart';
 
-import 'package:flutter/foundation.dart';
-
 class ApiService {
-  static const String baseUrl = 'http://10.217.125.1:5000';
+  // =========================================================
+  // API CONFIGURATION
+  // =========================================================
+
+  static const String baseUrl = 'https://levetor-hub.onrender.com';
+  // =========================================================
+  // AUTHENTICATION TOKEN
+  // =========================================================
+
+  static const String _tokenKey = 'api_token';
+
+  // =========================================================
+  // SAVE AUTH TOKEN
+  // =========================================================
+
+  static Future<void> _saveAuthTokenFromResponse(
+    dynamic data,
+  ) async {
+    if (data is! Map) {
+      return;
+    }
+
+    String? token;
+
+    final possibleTokenKeys = [
+      'api_token',
+      'token',
+      'access_token',
+    ];
+
+    for (final key in possibleTokenKeys) {
+      final value = data[key];
+
+      if (value != null &&
+          value.toString().trim().isNotEmpty) {
+        token = value.toString().trim();
+        break;
+      }
+    }
+
+    if (token == null) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setString(
+      _tokenKey,
+      token,
+    );
+  }
+
+  // =========================================================
+  // AUTHENTICATED API HEADERS
+  // =========================================================
+
+  static Future<Map<String, String>> _authenticatedHeaders({
+    bool includeJson = false,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final token = prefs.getString(_tokenKey);
+
+    final headers = <String, String>{};
+
+    if (includeJson) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    if (token != null &&
+        token.trim().isNotEmpty) {
+      headers['Authorization'] =
+          'Bearer ${token.trim()}';
+    }
+
+    return headers;
+  }
+
+  // =========================================================
+  // CHECK AUTH TOKEN
+  // =========================================================
+
+  static Future<bool> hasAuthToken() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final token = prefs.getString(_tokenKey);
+
+    return token != null &&
+        token.trim().isNotEmpty;
+  }
+
+  // =========================================================
+  // CLEAR AUTH TOKEN
+  // =========================================================
+
+  static Future<void> clearAuthToken() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.remove(_tokenKey);
+  }
 
   // =========================================================
   // HEALTH CHECK
@@ -18,8 +117,12 @@ class ApiService {
   static Future<bool> checkHealth() async {
     try {
       final response = await http
-          .get(Uri.parse('$baseUrl/api/health'))
-          .timeout(const Duration(seconds: 10));
+          .get(
+            Uri.parse('$baseUrl/api/health'),
+          )
+          .timeout(
+            const Duration(seconds: 10),
+          );
 
       if (response.statusCode != 200) {
         return false;
@@ -27,7 +130,8 @@ class ApiService {
 
       final data = jsonDecode(response.body);
 
-      return data is Map && data['success'] == true;
+      return data is Map &&
+          data['success'] == true;
     } catch (_) {
       return false;
     }
@@ -40,21 +144,29 @@ class ApiService {
   static Future<List<Product>> getProducts() async {
     try {
       final response = await http
-          .get(Uri.parse('$baseUrl/api/products'))
-          .timeout(const Duration(seconds: 15));
+          .get(
+            Uri.parse('$baseUrl/api/products'),
+          )
+          .timeout(
+            const Duration(seconds: 15),
+          );
 
       if (response.statusCode != 200) {
         throw Exception(
-          'Failed to load products. Server returned ${response.statusCode}.',
+          'Failed to load products. '
+          'Server returned ${response.statusCode}.',
         );
       }
 
-      final dynamic data = jsonDecode(response.body);
+      final dynamic data =
+          jsonDecode(response.body);
 
       List<dynamic> productsData;
 
-      if (data is Map && data['value'] is List) {
-        productsData = data['value'] as List;
+      if (data is Map &&
+          data['value'] is List) {
+        productsData =
+            data['value'] as List;
       } else if (data is List) {
         productsData = data;
       } else {
@@ -86,29 +198,44 @@ class ApiService {
   // GET SINGLE PRODUCT
   // =========================================================
 
-  static Future<Product> getProduct(int productId) async {
+  static Future<Product> getProduct(
+    int productId,
+  ) async {
     try {
       final response = await http
-          .get(Uri.parse('$baseUrl/api/products/$productId'))
-          .timeout(const Duration(seconds: 15));
+          .get(
+            Uri.parse(
+              '$baseUrl/api/products/$productId',
+            ),
+          )
+          .timeout(
+            const Duration(seconds: 15),
+          );
 
       if (response.statusCode != 200) {
-        String message = 'Failed to load product.';
+        String message =
+            'Failed to load product.';
 
         try {
-          final data = jsonDecode(response.body);
+          final data =
+              jsonDecode(response.body);
 
-          if (data is Map && data['error'] != null) {
-            message = data['error'].toString();
-          } else if (data is Map && data['message'] != null) {
-            message = data['message'].toString();
+          if (data is Map &&
+              data['error'] != null) {
+            message =
+                data['error'].toString();
+          } else if (data is Map &&
+              data['message'] != null) {
+            message =
+                data['message'].toString();
           }
         } catch (_) {}
 
         throw Exception(message);
       }
 
-      final dynamic data = jsonDecode(response.body);
+      final dynamic data =
+          jsonDecode(response.body);
 
       if (data is! Map) {
         throw Exception(
@@ -129,7 +256,9 @@ class ApiService {
       }
 
       return Product.fromJson(
-        Map<String, dynamic>.from(productData),
+        Map<String, dynamic>.from(
+          productData,
+        ),
       );
     } catch (e) {
       if (e is Exception) {
@@ -142,7 +271,7 @@ class ApiService {
     }
   }
 
-  // =========================================================
+    // =========================================================
   // CREATE ORDER
   // =========================================================
 
@@ -167,15 +296,31 @@ class ApiService {
         requestBody['customer_id'] = customerId;
       }
 
+      // Authenticated customer orders must include the API token.
+      final headers = customerId != null
+          ? await _authenticatedHeaders(
+              includeJson: true,
+            )
+          : <String, String>{
+              'Content-Type': 'application/json',
+            };
+
+      if (customerId != null &&
+          !headers.containsKey('Authorization')) {
+        throw Exception(
+          'Authentication required. Please login again.',
+        );
+      }
+
       final response = await http
           .post(
             Uri.parse('$baseUrl/api/orders'),
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: headers,
             body: jsonEncode(requestBody),
           )
-          .timeout(const Duration(seconds: 20));
+          .timeout(
+            const Duration(seconds: 20),
+          );
 
       dynamic data;
 
@@ -223,26 +368,44 @@ class ApiService {
   // INITIALIZE PAYSTACK PAYMENT
   // =========================================================
 
-  static Future<Map<String, dynamic>> initializePayment({
+  static Future<Map<String, dynamic>>
+      initializePayment({
     required int orderId,
   }) async {
     try {
+      final headers =
+          await _authenticatedHeaders(
+        includeJson: true,
+      );
+
+      if (!headers.containsKey(
+        'Authorization',
+      )) {
+        throw Exception(
+          'Authentication required. Please login again.',
+        );
+      }
+
       final response = await http
           .post(
-            Uri.parse('$baseUrl/api/payments/initialize'),
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            Uri.parse(
+              '$baseUrl/api/payments/initialize',
+            ),
+            headers: headers,
             body: jsonEncode({
               'order_id': orderId,
             }),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(
+            const Duration(seconds: 30),
+          );
 
       dynamic data;
 
       try {
-        data = jsonDecode(response.body);
+        data = jsonDecode(
+          response.body,
+        );
       } catch (_) {
         throw Exception(
           'Invalid payment initialization response.',
@@ -250,13 +413,16 @@ class ApiService {
       }
 
       if (response.statusCode != 200) {
-        String message = 'Failed to initialize payment.';
+        String message =
+            'Failed to initialize payment.';
 
         if (data is Map) {
           if (data['message'] != null) {
-            message = data['message'].toString();
+            message =
+                data['message'].toString();
           } else if (data['error'] != null) {
-            message = data['error'].toString();
+            message =
+                data['error'].toString();
           }
         }
 
@@ -269,7 +435,10 @@ class ApiService {
         );
       }
 
-      final result = Map<String, dynamic>.from(data);
+      final result =
+          Map<String, dynamic>.from(
+        data,
+      );
 
       if (result['success'] != true) {
         throw Exception(
@@ -294,11 +463,13 @@ class ApiService {
   // VERIFY PAYSTACK PAYMENT
   // =========================================================
 
-  static Future<Map<String, dynamic>> verifyPayment({
+  static Future<Map<String, dynamic>>
+      verifyPayment({
     required String reference,
   }) async {
     try {
-      final cleanReference = reference.trim();
+      final cleanReference =
+          reference.trim();
 
       if (cleanReference.isEmpty) {
         throw Exception(
@@ -306,19 +477,27 @@ class ApiService {
         );
       }
 
+      final headers =
+          await _authenticatedHeaders();
+
       final response = await http
           .get(
             Uri.parse(
               '$baseUrl/api/payments/verify/'
               '${Uri.encodeComponent(cleanReference)}',
             ),
+            headers: headers,
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(
+            const Duration(seconds: 30),
+          );
 
       dynamic data;
 
       try {
-        data = jsonDecode(response.body);
+        data = jsonDecode(
+          response.body,
+        );
       } catch (_) {
         throw Exception(
           'Invalid payment verification response.',
@@ -326,13 +505,16 @@ class ApiService {
       }
 
       if (response.statusCode != 200) {
-        String message = 'Payment verification failed.';
+        String message =
+            'Payment verification failed.';
 
         if (data is Map) {
           if (data['message'] != null) {
-            message = data['message'].toString();
+            message =
+                data['message'].toString();
           } else if (data['error'] != null) {
-            message = data['error'].toString();
+            message =
+                data['error'].toString();
           }
         }
 
@@ -345,7 +527,10 @@ class ApiService {
         );
       }
 
-      final result = Map<String, dynamic>.from(data);
+      final result =
+          Map<String, dynamic>.from(
+        data,
+      );
 
       if (result['success'] != true) {
         throw Exception(
@@ -370,31 +555,63 @@ class ApiService {
   // GET CUSTOMER ORDERS
   // =========================================================
 
-  static Future<List<Order>> getOrders(int customerId) async {
+  static Future<List<Order>> getOrders(
+    int customerId,
+  ) async {
     try {
+      final headers =
+          await _authenticatedHeaders();
+
       final response = await http
           .get(
-            Uri.parse('$baseUrl/api/orders/$customerId'),
+            Uri.parse(
+              '$baseUrl/api/orders/$customerId',
+            ),
+            headers: headers,
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(
+            const Duration(seconds: 15),
+          );
 
       if (response.statusCode != 200) {
-        throw Exception(
-          'Failed to load orders. '
-          'Server returned ${response.statusCode}.',
-        );
+        dynamic data;
+
+        try {
+          data = jsonDecode(
+            response.body,
+          );
+        } catch (_) {
+          data = null;
+        }
+
+        String message =
+            'Failed to load orders. '
+            'Server returned ${response.statusCode}.';
+
+        if (data is Map &&
+            data['message'] != null) {
+          message =
+              data['message'].toString();
+        }
+
+        throw Exception(message);
       }
 
-      final dynamic data = jsonDecode(response.body);
+      final dynamic data =
+          jsonDecode(response.body);
 
       List<dynamic>? ordersData;
 
       if (data is List) {
         ordersData = data;
-      } else if (data is Map && data['orders'] is List) {
-        ordersData = data['orders'] as List;
-      } else if (data is Map && data['value'] is List) {
-        ordersData = data['value'] as List;
+      } else if (data is Map &&
+          data['orders'] is List) {
+        ordersData =
+            data['orders'] as List;
+      } else if (data is Map &&
+          data['value'] is List) {
+        ordersData =
+            data['value'] as List;
       }
 
       if (ordersData == null) {
@@ -407,7 +624,9 @@ class ApiService {
           .whereType<Map>()
           .map(
             (json) => Order.fromJson(
-              Map<String, dynamic>.from(json),
+              Map<String, dynamic>.from(
+                json,
+              ),
             ),
           )
           .toList();
@@ -426,15 +645,23 @@ class ApiService {
   // IMAGE URL
   // =========================================================
 
-  static String getImageUrl(String? imageName) {
-    if (imageName == null || imageName.trim().isEmpty) {
+  static String getImageUrl(
+    String? imageName,
+  ) {
+    if (imageName == null ||
+        imageName.trim().isEmpty) {
       return '';
     }
 
-    final cleanName = imageName.trim();
+    final cleanName =
+        imageName.trim();
 
-    if (cleanName.startsWith('http://') ||
-        cleanName.startsWith('https://')) {
+    if (cleanName.startsWith(
+          'http://',
+        ) ||
+        cleanName.startsWith(
+          'https://',
+        )) {
       return cleanName;
     }
 
@@ -445,7 +672,8 @@ class ApiService {
   // REGISTER CUSTOMER
   // =========================================================
 
-  static Future<Map<String, dynamic>> registerCustomer({
+  static Future<Map<String, dynamic>>
+      registerCustomer({
     required String fullname,
     required String email,
     required String phone,
@@ -456,9 +684,12 @@ class ApiService {
     try {
       final response = await http
           .post(
-            Uri.parse('$baseUrl/api/register'),
+            Uri.parse(
+              '$baseUrl/api/register',
+            ),
             headers: {
-              'Content-Type': 'application/json',
+              'Content-Type':
+                  'application/json',
             },
             body: jsonEncode({
               'fullname': fullname,
@@ -466,15 +697,20 @@ class ApiService {
               'phone': phone,
               'address': address,
               'password': password,
-              'confirm_password': confirmPassword,
+              'confirm_password':
+                  confirmPassword,
             }),
           )
-          .timeout(const Duration(seconds: 20));
+          .timeout(
+            const Duration(seconds: 20),
+          );
 
       dynamic data;
 
       try {
-        data = jsonDecode(response.body);
+        data = jsonDecode(
+          response.body,
+        );
       } catch (_) {
         throw Exception(
           'Invalid response received from server.',
@@ -482,13 +718,16 @@ class ApiService {
       }
 
       if (response.statusCode != 201) {
-        String message = 'Registration failed.';
+        String message =
+            'Registration failed.';
 
         if (data is Map) {
           if (data['message'] != null) {
-            message = data['message'].toString();
+            message =
+                data['message'].toString();
           } else if (data['error'] != null) {
-            message = data['error'].toString();
+            message =
+                data['error'].toString();
           }
         }
 
@@ -501,7 +740,9 @@ class ApiService {
         );
       }
 
-      return Map<String, dynamic>.from(data);
+      return Map<String, dynamic>.from(
+        data,
+      );
     } catch (e) {
       if (e is Exception) {
         rethrow;
@@ -517,28 +758,36 @@ class ApiService {
   // LOGIN CUSTOMER
   // =========================================================
 
-  static Future<Map<String, dynamic>> loginCustomer({
+  static Future<Map<String, dynamic>>
+      loginCustomer({
     required String email,
     required String password,
   }) async {
     try {
       final response = await http
           .post(
-            Uri.parse('$baseUrl/api/login'),
+            Uri.parse(
+              '$baseUrl/api/login',
+            ),
             headers: {
-              'Content-Type': 'application/json',
+              'Content-Type':
+                  'application/json',
             },
             body: jsonEncode({
               'email': email,
               'password': password,
             }),
           )
-          .timeout(const Duration(seconds: 20));
+          .timeout(
+            const Duration(seconds: 20),
+          );
 
       dynamic data;
 
       try {
-        data = jsonDecode(response.body);
+        data = jsonDecode(
+          response.body,
+        );
       } catch (_) {
         throw Exception(
           'Invalid response received from server.',
@@ -546,13 +795,16 @@ class ApiService {
       }
 
       if (response.statusCode != 200) {
-        String message = 'Login failed.';
+        String message =
+            'Login failed.';
 
         if (data is Map) {
           if (data['message'] != null) {
-            message = data['message'].toString();
+            message =
+                data['message'].toString();
           } else if (data['error'] != null) {
-            message = data['error'].toString();
+            message =
+                data['error'].toString();
           }
         }
 
@@ -565,7 +817,23 @@ class ApiService {
         );
       }
 
-      return Map<String, dynamic>.from(data);
+      final result =
+          Map<String, dynamic>.from(
+        data,
+      );
+
+      if (result['success'] == false) {
+        throw Exception(
+          result['message']?.toString() ??
+              'Login failed.',
+        );
+      }
+
+      await _saveAuthTokenFromResponse(
+        result,
+      );
+
+      return result;
     } catch (e) {
       if (e is Exception) {
         rethrow;
@@ -581,18 +849,30 @@ class ApiService {
   // GET CUSTOMER
   // =========================================================
 
-  static Future<Customer> getCustomer(int customerId) async {
+  static Future<Customer> getCustomer(
+    int customerId,
+  ) async {
     try {
+      final headers =
+          await _authenticatedHeaders();
+
       final response = await http
           .get(
-            Uri.parse('$baseUrl/api/customers/$customerId'),
+            Uri.parse(
+              '$baseUrl/api/customers/$customerId',
+            ),
+            headers: headers,
           )
-          .timeout(const Duration(seconds: 20));
+          .timeout(
+            const Duration(seconds: 20),
+          );
 
       dynamic data;
 
       try {
-        data = jsonDecode(response.body);
+        data = jsonDecode(
+          response.body,
+        );
       } catch (_) {
         throw Exception(
           'Invalid response received from server.',
@@ -601,13 +881,15 @@ class ApiService {
 
       if (response.statusCode != 200) {
         throw Exception(
-          data is Map && data['message'] != null
+          data is Map &&
+                  data['message'] != null
               ? data['message'].toString()
               : 'Failed to load customer profile.',
         );
       }
 
-      if (data is! Map || data['customer'] is! Map) {
+      if (data is! Map ||
+          data['customer'] is! Map) {
         throw Exception(
           'Invalid customer profile received from server.',
         );
@@ -641,12 +923,17 @@ class ApiService {
     required String address,
   }) async {
     try {
+      final headers =
+          await _authenticatedHeaders(
+        includeJson: true,
+      );
+
       final response = await http
           .put(
-            Uri.parse('$baseUrl/api/customers/$customerId'),
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            Uri.parse(
+              '$baseUrl/api/customers/$customerId',
+            ),
+            headers: headers,
             body: jsonEncode({
               'fullname': fullname,
               'email': email,
@@ -654,12 +941,16 @@ class ApiService {
               'address': address,
             }),
           )
-          .timeout(const Duration(seconds: 20));
+          .timeout(
+            const Duration(seconds: 20),
+          );
 
       dynamic data;
 
       try {
-        data = jsonDecode(response.body);
+        data = jsonDecode(
+          response.body,
+        );
       } catch (_) {
         throw Exception(
           'Invalid response received from server.',
@@ -668,13 +959,15 @@ class ApiService {
 
       if (response.statusCode != 200) {
         throw Exception(
-          data is Map && data['message'] != null
+          data is Map &&
+                  data['message'] != null
               ? data['message'].toString()
               : 'Failed to update customer profile.',
         );
       }
 
-      if (data is! Map || data['customer'] is! Map) {
+      if (data is! Map ||
+          data['customer'] is! Map) {
         throw Exception(
           'Invalid customer profile received from server.',
         );
@@ -700,11 +993,13 @@ class ApiService {
   // GOOGLE LOGIN
   // =========================================================
 
-  static Future<Map<String, dynamic>> googleLogin({
+  static Future<Map<String, dynamic>>
+      googleLogin({
     required String idToken,
   }) async {
     try {
-      final cleanToken = idToken.trim();
+      final cleanToken =
+          idToken.trim();
 
       if (cleanToken.isEmpty) {
         throw Exception(
@@ -714,20 +1009,27 @@ class ApiService {
 
       final response = await http
           .post(
-            Uri.parse('$baseUrl/api/auth/google'),
+            Uri.parse(
+              '$baseUrl/api/auth/google',
+            ),
             headers: {
-              'Content-Type': 'application/json',
+              'Content-Type':
+                  'application/json',
             },
             body: jsonEncode({
               'id_token': cleanToken,
             }),
           )
-          .timeout(const Duration(seconds: 20));
+          .timeout(
+            const Duration(seconds: 20),
+          );
 
       dynamic data;
 
       try {
-        data = jsonDecode(response.body);
+        data = jsonDecode(
+          response.body,
+        );
       } catch (_) {
         throw Exception(
           'Invalid Google authentication response.',
@@ -735,13 +1037,16 @@ class ApiService {
       }
 
       if (response.statusCode != 200) {
-        String message = 'Google login failed.';
+        String message =
+            'Google login failed.';
 
         if (data is Map) {
           if (data['message'] != null) {
-            message = data['message'].toString();
+            message =
+                data['message'].toString();
           } else if (data['error'] != null) {
-            message = data['error'].toString();
+            message =
+                data['error'].toString();
           }
         }
 
@@ -754,7 +1059,10 @@ class ApiService {
         );
       }
 
-      final result = Map<String, dynamic>.from(data);
+      final result =
+          Map<String, dynamic>.from(
+        data,
+      );
 
       if (result['success'] != true) {
         throw Exception(
@@ -762,6 +1070,10 @@ class ApiService {
               'Google login failed.',
         );
       }
+
+      await _saveAuthTokenFromResponse(
+        result,
+      );
 
       return result;
     } catch (e) {
@@ -779,11 +1091,13 @@ class ApiService {
   // FORGOT PASSWORD
   // =========================================================
 
-  static Future<Map<String, dynamic>> forgotPassword({
+  static Future<Map<String, dynamic>>
+      forgotPassword({
     required String email,
   }) async {
     try {
-      final cleanEmail = email.trim();
+      final cleanEmail =
+          email.trim();
 
       if (cleanEmail.isEmpty) {
         throw Exception(
@@ -793,20 +1107,27 @@ class ApiService {
 
       final response = await http
           .post(
-            Uri.parse('$baseUrl/api/forgot-password'),
+            Uri.parse(
+              '$baseUrl/api/forgot-password',
+            ),
             headers: {
-              'Content-Type': 'application/json',
+              'Content-Type':
+                  'application/json',
             },
             body: jsonEncode({
               'email': cleanEmail,
             }),
           )
-          .timeout(const Duration(seconds: 20));
+          .timeout(
+            const Duration(seconds: 20),
+          );
 
       dynamic data;
 
       try {
-        data = jsonDecode(response.body);
+        data = jsonDecode(
+          response.body,
+        );
       } catch (_) {
         throw Exception(
           'Invalid password reset response.',
@@ -814,13 +1135,16 @@ class ApiService {
       }
 
       if (response.statusCode != 200) {
-        String message = 'Password reset request failed.';
+        String message =
+            'Password reset request failed.';
 
         if (data is Map) {
           if (data['message'] != null) {
-            message = data['message'].toString();
+            message =
+                data['message'].toString();
           } else if (data['error'] != null) {
-            message = data['error'].toString();
+            message =
+                data['error'].toString();
           }
         }
 
@@ -833,7 +1157,10 @@ class ApiService {
         );
       }
 
-      final result = Map<String, dynamic>.from(data);
+      final result =
+          Map<String, dynamic>.from(
+        data,
+      );
 
       if (result['success'] != true) {
         throw Exception(
@@ -853,6 +1180,7 @@ class ApiService {
       );
     }
   }
+
   // =========================================================
   // REGISTER FCM DEVICE TOKEN
   // =========================================================
@@ -862,20 +1190,25 @@ class ApiService {
     required String fcmToken,
   }) async {
     try {
-      final cleanToken = fcmToken.trim();
+      final cleanToken =
+          fcmToken.trim();
 
       if (cleanToken.isEmpty) {
         return false;
       }
 
+      final headers =
+          await _authenticatedHeaders(
+        includeJson: true,
+      );
+
       final response = await http
           .post(
             Uri.parse(
-              '$baseUrl/api/customers/$customerId/fcm-token',
+              '$baseUrl/api/customers/'
+              '$customerId/fcm-token',
             ),
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: headers,
             body: jsonEncode({
               'fcm_token': cleanToken,
             }),
@@ -887,7 +1220,9 @@ class ApiService {
       dynamic data;
 
       try {
-        data = jsonDecode(response.body);
+        data = jsonDecode(
+          response.body,
+        );
       } catch (_) {
         return false;
       }
@@ -897,6 +1232,15 @@ class ApiService {
           'FCM token registration failed: '
           '${response.statusCode}',
         );
+
+        if (data is Map &&
+            data['message'] != null) {
+          debugPrint(
+            'FCM server message: '
+            '${data['message']}',
+          );
+        }
+
         return false;
       }
 
@@ -905,13 +1249,16 @@ class ApiService {
       }
 
       final result =
-          Map<String, dynamic>.from(data);
+          Map<String, dynamic>.from(
+        data,
+      );
 
       if (result['success'] != true) {
         debugPrint(
           'FCM token registration failed: '
           '${result['message'] ?? 'Unknown error'}',
         );
+
         return false;
       }
 
@@ -929,19 +1276,26 @@ class ApiService {
       return false;
     }
   }
-    // =========================================================
+
+  // =========================================================
   // GET CUSTOMER NOTIFICATIONS
   // =========================================================
 
-  static Future<Map<String, dynamic>> getNotifications(
+  static Future<Map<String, dynamic>>
+      getNotifications(
     int customerId,
   ) async {
     try {
+      final headers =
+          await _authenticatedHeaders();
+
       final response = await http
           .get(
             Uri.parse(
-              '$baseUrl/api/customers/$customerId/notifications',
+              '$baseUrl/api/customers/'
+              '$customerId/notifications',
             ),
+            headers: headers,
           )
           .timeout(
             const Duration(seconds: 20),
@@ -950,7 +1304,9 @@ class ApiService {
       dynamic data;
 
       try {
-        data = jsonDecode(response.body);
+        data = jsonDecode(
+          response.body,
+        );
       } catch (_) {
         throw Exception(
           'Invalid notification response from server.',
@@ -959,7 +1315,8 @@ class ApiService {
 
       if (response.statusCode != 200) {
         throw Exception(
-          data is Map && data['message'] != null
+          data is Map &&
+                  data['message'] != null
               ? data['message'].toString()
               : 'Failed to load notifications.',
         );
@@ -972,7 +1329,9 @@ class ApiService {
       }
 
       final result =
-          Map<String, dynamic>.from(data);
+          Map<String, dynamic>.from(
+        data,
+      );
 
       if (result['success'] != true) {
         throw Exception(
@@ -1002,6 +1361,11 @@ class ApiService {
     required int notificationId,
   }) async {
     try {
+      final headers =
+          await _authenticatedHeaders(
+        includeJson: true,
+      );
+
       final response = await http
           .put(
             Uri.parse(
@@ -1009,9 +1373,7 @@ class ApiService {
               '$customerId/notifications/'
               '$notificationId/read',
             ),
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: headers,
           )
           .timeout(
             const Duration(seconds: 20),
@@ -1020,7 +1382,9 @@ class ApiService {
       dynamic data;
 
       try {
-        data = jsonDecode(response.body);
+        data = jsonDecode(
+          response.body,
+        );
       } catch (_) {
         return false;
       }
@@ -1034,7 +1398,9 @@ class ApiService {
       }
 
       final result =
-          Map<String, dynamic>.from(data);
+          Map<String, dynamic>.from(
+        data,
+      );
 
       return result['success'] == true;
     } catch (_) {
@@ -1046,19 +1412,23 @@ class ApiService {
   // MARK ALL NOTIFICATIONS AS READ
   // =========================================================
 
-  static Future<bool> markAllNotificationsAsRead(
+  static Future<bool>
+      markAllNotificationsAsRead(
     int customerId,
   ) async {
     try {
+      final headers =
+          await _authenticatedHeaders(
+        includeJson: true,
+      );
+
       final response = await http
           .put(
             Uri.parse(
               '$baseUrl/api/customers/'
               '$customerId/notifications/read-all',
             ),
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: headers,
           )
           .timeout(
             const Duration(seconds: 20),
@@ -1067,7 +1437,9 @@ class ApiService {
       dynamic data;
 
       try {
-        data = jsonDecode(response.body);
+        data = jsonDecode(
+          response.body,
+        );
       } catch (_) {
         return false;
       }
@@ -1081,7 +1453,9 @@ class ApiService {
       }
 
       final result =
-          Map<String, dynamic>.from(data);
+          Map<String, dynamic>.from(
+        data,
+      );
 
       return result['success'] == true;
     } catch (_) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 
 import '../models/customer.dart';
@@ -20,12 +21,42 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   bool _obscurePassword = true;
+
+  GoogleSignIn? _googleSignIn;
+
+  static const String _googleWebClientId =
+      '20892518320-nk2mrd1dh3n0l4uckhuh47pjpjp60hsb.apps.googleusercontent.com';
+
+  @override
+  void initState() {
+    super.initState();
+
+    _initializeGoogleSignIn();
+  }
+
+  Future<void> _initializeGoogleSignIn() async {
+    try {
+      final googleSignIn = GoogleSignIn.instance;
+
+      await googleSignIn.initialize(
+        serverClientId: _googleWebClientId,
+      );
+
+      _googleSignIn = googleSignIn;
+
+      debugPrint('Google Sign-In initialized successfully.');
+    } catch (e) {
+      debugPrint('Google Sign-In initialization error: $e');
+    }
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+
     super.dispose();
   }
 
@@ -72,9 +103,22 @@ class _LoginScreenState extends State<LoginScreen> {
         Map<String, dynamic>.from(customerData),
       );
 
-      await context
-          .read<CustomerProvider>()
-          .setCustomer(customer);
+      // =====================================================
+      // SAVE CUSTOMER + API TOKEN
+      // =====================================================
+
+      final apiToken = result['token']?.toString();
+
+      if (apiToken == null || apiToken.trim().isEmpty) {
+        throw Exception(
+          'Login succeeded, but the authentication token was not received.',
+        );
+      }
+
+      await context.read<CustomerProvider>().setCustomer(
+        customer,
+        apiToken: apiToken,
+      );
 
       if (!mounted) {
         return;
@@ -111,190 +155,311 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // =========================================================
-  // FORGOT PASSWORD
+  // GOOGLE LOGIN
   // =========================================================
 
-  Future<void> _forgotPassword() async {
-    final emailController = TextEditingController(
-      text: _emailController.text.trim(),
-    );
+  Future<void> _googleLogin() async {
+    if (_isLoading || _isGoogleLoading) {
+      return;
+    }
 
-    final formKey = GlobalKey<FormState>();
+    FocusScope.of(context).unfocus();
 
-    final email = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) {
-        bool loading = false;
+    setState(() {
+      _isGoogleLoading = true;
+    });
 
-        return StatefulBuilder(
-          builder: (
-            context,
-            setDialogState,
-          ) {
-            return AlertDialog(
-              title: const Text(
-                'Forgot Password?',
-              ),
-              content: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Enter your email address and we will generate a password reset link.',
-                    ),
-                    const SizedBox(height: 18),
-                    TextFormField(
-                      controller: emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        labelText: 'Email Address',
-                        prefixIcon: Icon(
-                          Icons.email_outlined,
-                        ),
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: _validateEmail,
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: loading
-                      ? null
-                      : () {
-                          Navigator.pop(dialogContext);
-                        },
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: loading
-                      ? null
-                      : () async {
-                          if (!formKey
-                              .currentState!
-                              .validate()) {
-                            return;
-                          }
+    try {
+      final googleSignIn = _googleSignIn;
 
-                          setDialogState(() {
-                            loading = true;
-                          });
-
-                          try {
-                            final result =
-                                await ApiService.forgotPassword(
-                              email: emailController.text.trim(),
-                            );
-
-                            if (!context.mounted) {
-                              return;
-                            }
-
-                            Navigator.pop(
-                              dialogContext,
-                              emailController.text.trim(),
-                            );
-
-                            final resetLink =
-                                result['reset_link']?.toString();
-
-                            if (resetLink != null &&
-                                resetLink.isNotEmpty) {
-                              await showDialog<void>(
-                                context: context,
-                                builder: (context) {
-                                  return AlertDialog(
-                                    title: const Text(
-                                      'Password Reset Link',
-                                    ),
-                                    content: SelectableText(
-                                      resetLink,
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.pop(context);
-                                        },
-                                        child: const Text(
-                                          'Close',
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                            } else {
-                              ScaffoldMessenger.of(
-                                context,
-                              ).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Password reset request submitted.',
-                                  ),
-                                  behavior:
-                                      SnackBarBehavior.floating,
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            if (!context.mounted) {
-                              return;
-                            }
-
-                            setDialogState(() {
-                              loading = false;
-                            });
-
-                            ScaffoldMessenger.of(
-                              context,
-                            ).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  e.toString().replaceFirst(
-                                    'Exception: ',
-                                    '',
-                                  ),
-                                ),
-                                behavior:
-                                    SnackBarBehavior.floating,
-                              ),
-                            );
-                          }
-                        },
-                  child: loading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'Reset Password',
-                        ),
-                ),
-              ],
-            );
-          },
+      if (googleSignIn == null) {
+        throw Exception(
+          'Google Sign-In is still initializing. Please try again.',
         );
-      },
-    );
+      }
 
-    emailController.dispose();
+      // Google Sign-In was already initialized in initState().
+      final account = await googleSignIn.authenticate();
 
-    if (email != null && mounted) {
+      final authentication = account.authentication;
+
+      final idToken = authentication.idToken;
+
+      if (idToken == null || idToken.trim().isEmpty) {
+        throw Exception(
+          'Google did not return an authentication token.',
+        );
+      }
+
+      final result = await ApiService.googleLogin(
+        idToken: idToken,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      if (result['success'] != true) {
+        throw Exception(
+          result['message']?.toString() ??
+              'Google login failed.',
+        );
+      }
+
+      final customerData = result['customer'];
+
+      if (customerData is! Map) {
+        throw Exception(
+          'Invalid customer information received from Google.',
+        );
+      }
+
+      final customer = Customer.fromJson(
+        Map<String, dynamic>.from(customerData),
+      );
+
+      // =====================================================
+      // SAVE CUSTOMER + GOOGLE API TOKEN
+      // =====================================================
+
+      final apiToken = result['token']?.toString();
+
+      if (apiToken == null || apiToken.trim().isEmpty) {
+        throw Exception(
+          'Google login succeeded, but the authentication token was not received.',
+        );
+      }
+
+      await context.read<CustomerProvider>().setCustomer(
+        customer,
+        apiToken: apiToken,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Password reset request completed.',
+            'Welcome, ${customer.fullname}!',
           ),
           behavior: SnackBarBehavior.floating,
         ),
       );
+
+      Navigator.pop(context);
+    } on GoogleSignInException catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      if (e.code == GoogleSignInExceptionCode.canceled) {
+        return;
+      }
+
+      _showError(
+        e.description ??
+            'Google Sign-In failed.',
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      _showError(
+        e.toString().replaceFirst(
+          'Exception: ',
+          '',
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGoogleLoading = false;
+        });
+      }
     }
   }
+
+// =========================================================
+// FORGOT PASSWORD
+// =========================================================
+
+Future<void> _forgotPassword() async {
+  final emailController = TextEditingController(
+    text: _emailController.text.trim(),
+  );
+
+  bool loading = false;
+
+  final result = await showDialog<Map<String, dynamic>>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) {
+      return StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          return AlertDialog(
+            title: const Text('Forgot Password?'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Enter your email address and we will send you a password reset link.',
+                ),
+                const SizedBox(height: 18),
+                TextField(
+                  controller: emailController,
+                  enabled: !loading,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Email Address',
+                    prefixIcon: Icon(
+                      Icons.email_outlined,
+                    ),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: loading
+                    ? null
+                    : () {
+                        Navigator.of(dialogContext).pop(
+                          <String, dynamic>{
+                            'cancelled': true,
+                          },
+                        );
+                      },
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: loading
+                    ? null
+                    : () async {
+                        final email =
+                            emailController.text.trim();
+
+                        if (email.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Please enter your email address.',
+                              ),
+                              behavior:
+                                  SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
+                        }
+
+                        if (_validateEmail(email) != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Please enter a valid email address.',
+                              ),
+                              behavior:
+                                  SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
+                        }
+
+                        setDialogState(() {
+                          loading = true;
+                        });
+
+                        try {
+                          final response =
+                              await ApiService.forgotPassword(
+                            email: email,
+                          );
+
+                          if (!mounted) {
+                            return;
+                          }
+
+                          final message =
+                              response['message']?.toString();
+
+                          Navigator.of(dialogContext).pop(
+                            <String, dynamic>{
+                              'success': true,
+                              'message': message,
+                            },
+                          );
+                        } catch (e) {
+                          if (!mounted) {
+                            return;
+                          }
+
+                          setDialogState(() {
+                            loading = false;
+                          });
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                e.toString().replaceFirst(
+                                      'Exception: ',
+                                      '',
+                                    ),
+                              ),
+                              behavior:
+                                  SnackBarBehavior.floating,
+                              duration:
+                                  const Duration(seconds: 5),
+                            ),
+                          );
+                        }
+                      },
+                child: loading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Send Reset Email',
+                      ),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  // Dispose ONLY after the dialog has completely closed.
+  emailController.dispose();
+
+  if (!mounted) {
+    return;
+  }
+
+  if (result != null &&
+      result['success'] == true) {
+    final message =
+        result['message']?.toString();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message?.isNotEmpty == true
+              ? message!
+              : 'Password reset instructions have been sent to your email address. Please check your inbox.',
+        ),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+      ),
+    );
+  }
+}
 
   // =========================================================
   // VALIDATION
@@ -305,9 +470,8 @@ class _LoginScreenState extends State<LoginScreen> {
       return 'Please enter your email.';
     }
 
-    final emailRegex = RegExp(
-      r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-    );
+    final emailRegex =
+        RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
     if (!emailRegex.hasMatch(value.trim())) {
       return 'Please enter a valid email address.';
@@ -368,6 +532,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isBusy =
+        _isLoading || _isGoogleLoading;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Login'),
@@ -379,14 +546,18 @@ class _LoginScreenState extends State<LoginScreen> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment:
+                  CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 25),
 
                 Icon(
                   Icons.lock_person_outlined,
                   size: 75,
-                  color: Theme.of(context).colorScheme.primary,
+                  color:
+                      Theme.of(context)
+                          .colorScheme
+                          .primary,
                 ),
 
                 const SizedBox(height: 18),
@@ -398,7 +569,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       .textTheme
                       .headlineSmall
                       ?.copyWith(
-                        fontWeight: FontWeight.bold,
+                        fontWeight:
+                            FontWeight.bold,
                       ),
                 ),
 
@@ -407,17 +579,21 @@ class _LoginScreenState extends State<LoginScreen> {
                 Text(
                   'Login to your Levetor Hub account.',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium,
                 ),
 
                 const SizedBox(height: 35),
 
                 TextFormField(
                   controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
+                  keyboardType:
+                      TextInputType.emailAddress,
                   decoration: _inputDecoration(
                     label: 'Email Address',
-                    icon: Icons.email_outlined,
+                    icon:
+                        Icons.email_outlined,
                   ),
                   validator: _validateEmail,
                 ),
@@ -429,7 +605,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   obscureText: _obscurePassword,
                   decoration: _inputDecoration(
                     label: 'Password',
-                    icon: Icons.lock_outline,
+                    icon:
+                        Icons.lock_outline,
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword
@@ -438,7 +615,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       onPressed: () {
                         setState(() {
-                          _obscurePassword = !_obscurePassword;
+                          _obscurePassword =
+                              !_obscurePassword;
                         });
                       },
                     ),
@@ -447,11 +625,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
 
                 Align(
-                  alignment: Alignment.centerRight,
+                  alignment:
+                      Alignment.centerRight,
                   child: TextButton(
-                    onPressed: _isLoading
-                        ? null
-                        : _forgotPassword,
+                    onPressed:
+                        isBusy
+                            ? null
+                            : _forgotPassword,
                     child: const Text(
                       'Forgot Password?',
                     ),
@@ -463,17 +643,22 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(
                   height: 54,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _login,
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                    onPressed:
+                        isBusy ? null : _login,
+                    style:
+                        ElevatedButton.styleFrom(
+                      shape:
+                          RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(14),
                       ),
                     ),
                     child: _isLoading
                         ? const SizedBox(
                             height: 24,
                             width: 24,
-                            child: CircularProgressIndicator(
+                            child:
+                                CircularProgressIndicator(
                               strokeWidth: 2.5,
                             ),
                           )
@@ -481,32 +666,117 @@ class _LoginScreenState extends State<LoginScreen> {
                             'Login',
                             style: TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              fontWeight:
+                                  FontWeight.bold,
                             ),
                           ),
+                  ),
+                ),
+
+                const SizedBox(height: 22),
+
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Divider(),
+                    ),
+                    Padding(
+                      padding:
+                          const EdgeInsets.symmetric(
+                        horizontal: 14,
+                      ),
+                      child: Text(
+                        'OR',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(
+                              fontWeight:
+                                  FontWeight.bold,
+                            ),
+                      ),
+                    ),
+                    const Expanded(
+                      child: Divider(),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 22),
+
+                SizedBox(
+                  height: 54,
+                  child: OutlinedButton.icon(
+                    onPressed:
+                        isBusy
+                            ? null
+                            : _googleLogin,
+
+                    // =================================================
+                    // GOOGLE ICON
+                    // =================================================
+                    icon: _isGoogleLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child:
+                                CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'G',
+                            style: TextStyle(
+                              fontSize: 23,
+                              fontWeight:
+                                  FontWeight.w700,
+                            ),
+                          ),
+
+                    label: Text(
+                      _isGoogleLoading
+                          ? 'Signing in with Google...'
+                          : 'Continue with Google',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight:
+                            FontWeight.w600,
+                      ),
+                    ),
+
+                    style:
+                        OutlinedButton.styleFrom(
+                      shape:
+                          RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(14),
+                      ),
+                    ),
                   ),
                 ),
 
                 const SizedBox(height: 25),
 
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment:
+                      MainAxisAlignment.center,
                   children: [
                     const Text(
                       "Don't have an account? ",
                     ),
                     TextButton(
-                      onPressed: _isLoading
-                          ? null
-                          : () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const RegisterScreen(),
-                                ),
-                              );
-                            },
+                      onPressed:
+                          isBusy
+                              ? null
+                              : () {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const RegisterScreen(),
+                                    ),
+                                  );
+                                },
                       child: const Text(
                         'Create Account',
                       ),

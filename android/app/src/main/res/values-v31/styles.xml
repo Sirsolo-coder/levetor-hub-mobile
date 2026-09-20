@@ -10,7 +10,7 @@
         </item>
 
         <item name="android:windowSplashScreenAnimatedIcon">
-            @drawable/levetor_logo
+            @drawable/levetor_l
         </item>
 
         <item name="android:windowBackground">

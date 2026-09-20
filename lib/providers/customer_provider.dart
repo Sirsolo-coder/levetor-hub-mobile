@@ -1,5 +1,5 @@
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/customer.dart';
@@ -26,57 +26,16 @@ class CustomerProvider extends ChangeNotifier {
   String get address => _customer?.address ?? '';
 
   // ============================================================
-  // REGISTER CURRENT DEVICE FOR CUSTOMER NOTIFICATIONS
-  // ============================================================
-
-  Future<void> registerNotificationToken() async {
-    final customer = _customer;
-
-    if (customer == null) {
-      return;
-    }
-
-    try {
-      final messaging = FirebaseMessaging.instance;
-
-      final token = await messaging.getToken();
-
-      if (token == null || token.trim().isEmpty) {
-        debugPrint(
-          'FCM token unavailable.',
-        );
-        return;
-      }
-
-      final registered =
-          await ApiService.registerFcmToken(
-        customerId: customer.id,
-        fcmToken: token,
-      );
-
-      debugPrint(
-        registered
-            ? 'FCM token linked to customer ${customer.id}.'
-            : 'FCM token could not be linked.',
-      );
-    } catch (e) {
-      debugPrint(
-        'FCM customer registration error: $e',
-      );
-    }
-  }
-
-  // ============================================================
-  // SET CUSTOMER OBJECT
+  // SET CUSTOMER AFTER LOGIN / REGISTRATION
   // ============================================================
 
   Future<void> setCustomer(
-    Customer customer,
-  ) async {
+    Customer customer, {
+    String? apiToken,
+  }) async {
     _customer = customer;
 
-    final prefs =
-        await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
 
     await prefs.setInt(
       'customer_id',
@@ -103,6 +62,17 @@ class CustomerProvider extends ChangeNotifier {
       customer.address,
     );
 
+    if (apiToken != null && apiToken.trim().isNotEmpty) {
+      await prefs.setString(
+        'api_token',
+        apiToken.trim(),
+      );
+
+      debugPrint(
+        'API authentication token saved successfully.',
+      );
+    }
+
     notifyListeners();
 
     // Register this phone for notifications.
@@ -116,8 +86,7 @@ class CustomerProvider extends ChangeNotifier {
   Future<void> setCustomerId(
     int customerId,
   ) async {
-    final prefs =
-        await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
 
     await prefs.setInt(
       'customer_id',
@@ -148,11 +117,11 @@ class CustomerProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    final prefs =
-        await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
 
-    final id =
-        prefs.getInt('customer_id');
+    final id = prefs.getInt(
+      'customer_id',
+    );
 
     if (id != null) {
       _customer = Customer(
@@ -189,6 +158,49 @@ class CustomerProvider extends ChangeNotifier {
   }
 
   // ============================================================
+  // REGISTER FCM DEVICE TOKEN
+  // ============================================================
+
+  Future<void> registerNotificationToken() async {
+    final customer = _customer;
+
+    if (customer == null) {
+      return;
+    }
+
+    try {
+      final messaging =
+          FirebaseMessaging.instance;
+
+      final token = await messaging.getToken();
+
+      if (token == null ||
+          token.trim().isEmpty) {
+        debugPrint(
+          'FCM token unavailable.',
+        );
+        return;
+      }
+
+      final registered =
+          await ApiService.registerFcmToken(
+        customerId: customer.id,
+        fcmToken: token,
+      );
+
+      debugPrint(
+        registered
+            ? 'FCM token linked to customer ${customer.id}.'
+            : 'FCM token could not be linked.',
+      );
+    } catch (e) {
+      debugPrint(
+        'FCM customer registration error: $e',
+      );
+    }
+  }
+
+  // ============================================================
   // LOGOUT
   // ============================================================
 
@@ -216,6 +228,10 @@ class CustomerProvider extends ChangeNotifier {
 
     await prefs.remove(
       'customer_address',
+    );
+
+    await prefs.remove(
+      'api_token',
     );
 
     notifyListeners();

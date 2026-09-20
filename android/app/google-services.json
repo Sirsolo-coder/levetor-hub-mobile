@@ -12,7 +12,20 @@
           "package_name": "com.example.levetor_hub_mobile"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "20892518320-tncj6dmmr4m3abmsnp4lhsltkvtg97t1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.levetor_hub_mobile",
+            "certificate_hash": "943e8155415e142252b876ae6f805b47d91cbdac"
+          }
+        },
+        {
+          "client_id": "20892518320-nk2mrd1dh3n0l4uckhuh47pjpjp60hsb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyC2P72KTb_F1P1oT5sVoVOsAHcqNjDtaOw"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "20892518320-nk2mrd1dh3n0l4uckhuh47pjpjp60hsb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
