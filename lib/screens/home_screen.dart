@@ -18,10 +18,24 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   static const Color skyBlue = Color(0xFF29B6F6);
   static const Color darkBlue = Color.fromARGB(255, 167, 189, 201);
-@override
-void initState() {
-  super.initState();
 
+  String _formatPrice(double price) {
+    final parts = price.toStringAsFixed(2).split('.');
+
+    final integerPart = parts[0];
+    final decimalPart = parts[1];
+
+    final formattedInteger = integerPart.replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (match) => ',',
+    );
+
+    return '$formattedInteger.$decimalPart';
+  }
+
+  @override
+  void initState() {
+    super.initState();
   WidgetsBinding.instance.addPostFrameCallback((_) {
     if (!mounted) return;
 
@@ -468,15 +482,16 @@ void initState() {
 
                   const SizedBox(height: 8),
 
-                  Text(
-                    '₦${product.price.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      color: darkBlue,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  const SizedBox(height: 8),
 
+Text(
+  '₦${_formatPrice(product.price)}',
+  style: const TextStyle(
+    color: darkBlue,
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+  ),
+),
                   const SizedBox(height: 5),
 
                   Row(

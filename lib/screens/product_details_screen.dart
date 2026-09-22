@@ -13,6 +13,19 @@ class ProductDetailsScreen extends StatelessWidget {
     super.key,
     required this.product,
   });
+  String _formatPrice(double price) {
+  final parts = price.toStringAsFixed(2).split('.');
+
+  final integerPart = parts[0];
+  final decimalPart = parts[1];
+
+  final formattedInteger = integerPart.replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (match) => ',',
+  );
+
+  return '$formattedInteger.$decimalPart';
+}
 
   @override
   Widget build(BuildContext context) {
@@ -239,12 +252,12 @@ class ProductDetailsScreen extends StatelessWidget {
             // PRICE
             // ==========================================
             Text(
-              '₦${product.price.toStringAsFixed(0)}',
-              style: const TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+  '₦${_formatPrice(product.price)}',
+  style: const TextStyle(
+    fontSize: 30,
+    fontWeight: FontWeight.bold,
+  ),
+),
 
             const SizedBox(height: 10),
 
