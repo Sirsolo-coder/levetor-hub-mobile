@@ -409,7 +409,7 @@ class _NotificationScreenState
                         itemCount:
                             _notifications.length,
                         separatorBuilder:
-                            (_, __) =>
+                            (_, _) =>
                                 const SizedBox(
                           height: 8,
                         ),

@@ -22,6 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _addressController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _referralCodeController = TextEditingController();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -35,6 +36,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _addressController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _referralCodeController.dispose();
     super.dispose();
   }
 
@@ -50,6 +52,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
+      final referralCode = _referralCodeController.text.trim().toUpperCase();
+
       final result = await ApiService.registerCustomer(
         fullname: _fullnameController.text.trim(),
         email: _emailController.text.trim(),
@@ -57,6 +61,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         address: _addressController.text.trim(),
         password: _passwordController.text,
         confirmPassword: _confirmPasswordController.text,
+        referralCode: referralCode.isEmpty ? null : referralCode,
       );
 
       if (!mounted) {
@@ -65,28 +70,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (result['success'] == true) {
         final customer = Customer(
-          id: int.tryParse(
-                result['customer_id']?.toString() ?? '',
-              ) ??
-              0,
+          id: int.tryParse(result['customer_id']?.toString() ?? '') ?? 0,
           fullname: result['fullname']?.toString() ?? '',
           email: result['email']?.toString() ?? '',
           phone: result['phone']?.toString() ?? '',
           address: result['address']?.toString() ?? '',
         );
 
-        await context
-            .read<CustomerProvider>()
-            .setCustomer(customer);
+        await context.read<CustomerProvider>().setCustomer(customer);
 
         if (!mounted) {
           return;
         }
 
+        final referred = result['referred'] == true;
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Account created successfully.',
+              referred
+                  ? 'Account created successfully. Your referral has been registered.'
+                  : 'Account created successfully.',
             ),
             behavior: SnackBarBehavior.floating,
           ),
@@ -94,14 +98,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (_) => const LoginScreen(),
-          ),
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
         );
       } else {
         throw Exception(
-          result['message']?.toString() ??
-              'Registration failed.',
+          result['message']?.toString() ?? 'Registration failed.',
         );
       }
     } catch (e) {
@@ -109,15 +110,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return;
       }
 
-      final message = e
-          .toString()
-          .replaceFirst('Exception: ', '');
+      final message = e.toString().replaceFirst('Exception: ', '');
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          behavior: SnackBarBehavior.floating,
-        ),
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
       );
     } finally {
       if (mounted) {
@@ -147,9 +143,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final email = value.trim();
 
-    final emailRegex = RegExp(
-      r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-    );
+    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
     if (!emailRegex.hasMatch(email)) {
       return 'Please enter a valid email address.';
@@ -203,9 +197,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       labelText: label,
       prefixIcon: Icon(icon),
       suffixIcon: suffixIcon,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
       ),
@@ -222,10 +214,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create Account'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Create Account'), centerTitle: true),
       body: SafeArea(
         child: Form(
           key: _formKey,
@@ -247,12 +236,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Text(
                   'Join Levetor Hub',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineSmall
-                      ?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: Theme.of(context).textTheme.headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
 
                 const SizedBox(height: 8),
@@ -262,17 +247,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   'manage your orders and enjoy a better '
                   'shopping experience.',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium,
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
 
                 const SizedBox(height: 28),
 
                 TextFormField(
                   controller: _fullnameController,
-                  textCapitalization:
-                      TextCapitalization.words,
+                  textCapitalization: TextCapitalization.words,
                   decoration: _inputDecoration(
                     label: 'Full Name',
                     icon: Icons.person_outline,
@@ -284,8 +266,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 TextFormField(
                   controller: _emailController,
-                  keyboardType:
-                      TextInputType.emailAddress,
+                  keyboardType: TextInputType.emailAddress,
                   decoration: _inputDecoration(
                     label: 'Email Address',
                     icon: Icons.email_outlined,
@@ -309,13 +290,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 TextFormField(
                   controller: _addressController,
-                  textCapitalization:
-                      TextCapitalization.sentences,
+                  textCapitalization: TextCapitalization.sentences,
                   maxLines: 2,
                   decoration: _inputDecoration(
                     label: 'Address',
                     icon: Icons.location_on_outlined,
                   ),
+                ),
+
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _referralCodeController,
+                  textCapitalization: TextCapitalization.characters,
+                  textInputAction: TextInputAction.next,
+                  decoration: _inputDecoration(
+                    label: 'Referral Code (Optional)',
+                    icon: Icons.card_giftcard_outlined,
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                Text(
+                  'Have a referral code? Enter it to connect your account '
+                  'to the person who invited you.',
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
                 ),
 
                 const SizedBox(height: 16),
@@ -334,8 +334,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       onPressed: () {
                         setState(() {
-                          _obscurePassword =
-                              !_obscurePassword;
+                          _obscurePassword = !_obscurePassword;
                         });
                       },
                     ),
@@ -359,8 +358,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       onPressed: () {
                         setState(() {
-                          _obscureConfirmPassword =
-                              !_obscureConfirmPassword;
+                          _obscureConfirmPassword = !_obscureConfirmPassword;
                         });
                       },
                     ),
@@ -373,22 +371,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 SizedBox(
                   height: 54,
                   child: ElevatedButton(
-                    onPressed:
-                        _isLoading ? null : _register,
+                    onPressed: _isLoading ? null : _register,
                     style: ElevatedButton.styleFrom(
                       shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                     ),
                     child: _isLoading
                         ? const SizedBox(
                             height: 24,
                             width: 24,
-                            child:
-                                CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                            ),
+                            child: CircularProgressIndicator(strokeWidth: 2.5),
                           )
                         : const Text(
                             'Create Account',
@@ -403,12 +396,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 18),
 
                 Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
-                      'Already have an account? ',
-                    ),
+                    const Text('Already have an account? '),
                     TextButton(
                       onPressed: _isLoading
                           ? null
@@ -416,8 +406,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      const LoginScreen(),
+                                  builder: (_) => const LoginScreen(),
                                 ),
                               );
                             },

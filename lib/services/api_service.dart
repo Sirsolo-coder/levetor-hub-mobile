@@ -14,6 +14,7 @@ class ApiService {
   // =========================================================
 
   static const String baseUrl = 'https://levetor-hub.onrender.com';
+
   // =========================================================
   // AUTHENTICATION TOKEN
   // =========================================================
@@ -24,26 +25,19 @@ class ApiService {
   // SAVE AUTH TOKEN
   // =========================================================
 
-  static Future<void> _saveAuthTokenFromResponse(
-    dynamic data,
-  ) async {
+  static Future<void> _saveAuthTokenFromResponse(dynamic data) async {
     if (data is! Map) {
       return;
     }
 
     String? token;
 
-    final possibleTokenKeys = [
-      'api_token',
-      'token',
-      'access_token',
-    ];
+    final possibleTokenKeys = ['api_token', 'token', 'access_token'];
 
     for (final key in possibleTokenKeys) {
       final value = data[key];
 
-      if (value != null &&
-          value.toString().trim().isNotEmpty) {
+      if (value != null && value.toString().trim().isNotEmpty) {
         token = value.toString().trim();
         break;
       }
@@ -55,10 +49,7 @@ class ApiService {
 
     final prefs = await SharedPreferences.getInstance();
 
-    await prefs.setString(
-      _tokenKey,
-      token,
-    );
+    await prefs.setString(_tokenKey, token);
   }
 
   // =========================================================
@@ -78,10 +69,8 @@ class ApiService {
       headers['Content-Type'] = 'application/json';
     }
 
-    if (token != null &&
-        token.trim().isNotEmpty) {
-      headers['Authorization'] =
-          'Bearer ${token.trim()}';
+    if (token != null && token.trim().isNotEmpty) {
+      headers['Authorization'] = 'Bearer ${token.trim()}';
     }
 
     return headers;
@@ -96,8 +85,7 @@ class ApiService {
 
     final token = prefs.getString(_tokenKey);
 
-    return token != null &&
-        token.trim().isNotEmpty;
+    return token != null && token.trim().isNotEmpty;
   }
 
   // =========================================================
@@ -117,12 +105,8 @@ class ApiService {
   static Future<bool> checkHealth() async {
     try {
       final response = await http
-          .get(
-            Uri.parse('$baseUrl/api/health'),
-          )
-          .timeout(
-            const Duration(seconds: 10),
-          );
+          .get(Uri.parse('$baseUrl/api/health'))
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) {
         return false;
@@ -130,8 +114,7 @@ class ApiService {
 
       final data = jsonDecode(response.body);
 
-      return data is Map &&
-          data['success'] == true;
+      return data is Map && data['success'] == true;
     } catch (_) {
       return false;
     }
@@ -144,12 +127,8 @@ class ApiService {
   static Future<List<Product>> getProducts() async {
     try {
       final response = await http
-          .get(
-            Uri.parse('$baseUrl/api/products'),
-          )
-          .timeout(
-            const Duration(seconds: 15),
-          );
+          .get(Uri.parse('$baseUrl/api/products'))
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode != 200) {
         throw Exception(
@@ -158,39 +137,28 @@ class ApiService {
         );
       }
 
-      final dynamic data =
-          jsonDecode(response.body);
+      final dynamic data = jsonDecode(response.body);
 
       List<dynamic> productsData;
 
-      if (data is Map &&
-          data['value'] is List) {
-        productsData =
-            data['value'] as List;
+      if (data is Map && data['value'] is List) {
+        productsData = data['value'] as List;
       } else if (data is List) {
         productsData = data;
       } else {
-        throw Exception(
-          'Invalid products response from server.',
-        );
+        throw Exception('Invalid products response from server.');
       }
 
       return productsData
           .whereType<Map>()
-          .map(
-            (json) => Product.fromJson(
-              Map<String, dynamic>.from(json),
-            ),
-          )
+          .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
           .toList();
     } catch (e) {
       if (e is Exception) {
         rethrow;
       }
 
-      throw Exception(
-        'Unable to connect to Levetor Hub server.',
-      );
+      throw Exception('Unable to connect to Levetor Hub server.');
     }
   }
 
@@ -198,49 +166,32 @@ class ApiService {
   // GET SINGLE PRODUCT
   // =========================================================
 
-  static Future<Product> getProduct(
-    int productId,
-  ) async {
+  static Future<Product> getProduct(int productId) async {
     try {
       final response = await http
-          .get(
-            Uri.parse(
-              '$baseUrl/api/products/$productId',
-            ),
-          )
-          .timeout(
-            const Duration(seconds: 15),
-          );
+          .get(Uri.parse('$baseUrl/api/products/$productId'))
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode != 200) {
-        String message =
-            'Failed to load product.';
+        String message = 'Failed to load product.';
 
         try {
-          final data =
-              jsonDecode(response.body);
+          final data = jsonDecode(response.body);
 
-          if (data is Map &&
-              data['error'] != null) {
-            message =
-                data['error'].toString();
-          } else if (data is Map &&
-              data['message'] != null) {
-            message =
-                data['message'].toString();
+          if (data is Map && data['error'] != null) {
+            message = data['error'].toString();
+          } else if (data is Map && data['message'] != null) {
+            message = data['message'].toString();
           }
         } catch (_) {}
 
         throw Exception(message);
       }
 
-      final dynamic data =
-          jsonDecode(response.body);
+      final dynamic data = jsonDecode(response.body);
 
       if (data is! Map) {
-        throw Exception(
-          'Invalid product response from server.',
-        );
+        throw Exception('Invalid product response from server.');
       }
 
       dynamic productData;
@@ -250,28 +201,20 @@ class ApiService {
       } else if (data['id'] != null) {
         productData = data;
       } else {
-        throw Exception(
-          'Product data was not found in server response.',
-        );
+        throw Exception('Product data was not found in server response.');
       }
 
-      return Product.fromJson(
-        Map<String, dynamic>.from(
-          productData,
-        ),
-      );
+      return Product.fromJson(Map<String, dynamic>.from(productData));
     } catch (e) {
       if (e is Exception) {
         rethrow;
       }
 
-      throw Exception(
-        'Unable to connect to Levetor Hub server.',
-      );
+      throw Exception('Unable to connect to Levetor Hub server.');
     }
   }
 
-    // =========================================================
+  // =========================================================
   // CREATE ORDER
   // =========================================================
 
@@ -296,20 +239,12 @@ class ApiService {
         requestBody['customer_id'] = customerId;
       }
 
-      // Authenticated customer orders must include the API token.
       final headers = customerId != null
-          ? await _authenticatedHeaders(
-              includeJson: true,
-            )
-          : <String, String>{
-              'Content-Type': 'application/json',
-            };
+          ? await _authenticatedHeaders(includeJson: true)
+          : <String, String>{'Content-Type': 'application/json'};
 
-      if (customerId != null &&
-          !headers.containsKey('Authorization')) {
-        throw Exception(
-          'Authentication required. Please login again.',
-        );
+      if (customerId != null && !headers.containsKey('Authorization')) {
+        throw Exception('Authentication required. Please login again.');
       }
 
       final response = await http
@@ -318,18 +253,14 @@ class ApiService {
             headers: headers,
             body: jsonEncode(requestBody),
           )
-          .timeout(
-            const Duration(seconds: 20),
-          );
+          .timeout(const Duration(seconds: 20));
 
       dynamic data;
 
       try {
         data = jsonDecode(response.body);
       } catch (_) {
-        throw Exception(
-          'Invalid response received from server.',
-        );
+        throw Exception('Invalid response received from server.');
       }
 
       if (response.statusCode != 201) {
@@ -347,9 +278,7 @@ class ApiService {
       }
 
       if (data is! Map) {
-        throw Exception(
-          'Invalid order response received from server.',
-        );
+        throw Exception('Invalid order response received from server.');
       }
 
       return Map<String, dynamic>.from(data);
@@ -358,9 +287,7 @@ class ApiService {
         rethrow;
       }
 
-      throw Exception(
-        'Unable to connect to Levetor Hub server.',
-      );
+      throw Exception('Unable to connect to Levetor Hub server.');
     }
   }
 
@@ -368,61 +295,40 @@ class ApiService {
   // INITIALIZE PAYSTACK PAYMENT
   // =========================================================
 
-  static Future<Map<String, dynamic>>
-      initializePayment({
+  static Future<Map<String, dynamic>> initializePayment({
     required int orderId,
   }) async {
     try {
-      final headers =
-          await _authenticatedHeaders(
-        includeJson: true,
-      );
+      final headers = await _authenticatedHeaders(includeJson: true);
 
-      if (!headers.containsKey(
-        'Authorization',
-      )) {
-        throw Exception(
-          'Authentication required. Please login again.',
-        );
+      if (!headers.containsKey('Authorization')) {
+        throw Exception('Authentication required. Please login again.');
       }
 
       final response = await http
           .post(
-            Uri.parse(
-              '$baseUrl/api/payments/initialize',
-            ),
+            Uri.parse('$baseUrl/api/payments/initialize'),
             headers: headers,
-            body: jsonEncode({
-              'order_id': orderId,
-            }),
+            body: jsonEncode({'order_id': orderId}),
           )
-          .timeout(
-            const Duration(seconds: 30),
-          );
+          .timeout(const Duration(seconds: 30));
 
       dynamic data;
 
       try {
-        data = jsonDecode(
-          response.body,
-        );
+        data = jsonDecode(response.body);
       } catch (_) {
-        throw Exception(
-          'Invalid payment initialization response.',
-        );
+        throw Exception('Invalid payment initialization response.');
       }
 
       if (response.statusCode != 200) {
-        String message =
-            'Failed to initialize payment.';
+        String message = 'Failed to initialize payment.';
 
         if (data is Map) {
           if (data['message'] != null) {
-            message =
-                data['message'].toString();
+            message = data['message'].toString();
           } else if (data['error'] != null) {
-            message =
-                data['error'].toString();
+            message = data['error'].toString();
           }
         }
 
@@ -430,20 +336,14 @@ class ApiService {
       }
 
       if (data is! Map) {
-        throw Exception(
-          'Invalid payment initialization response.',
-        );
+        throw Exception('Invalid payment initialization response.');
       }
 
-      final result =
-          Map<String, dynamic>.from(
-        data,
-      );
+      final result = Map<String, dynamic>.from(data);
 
       if (result['success'] != true) {
         throw Exception(
-          result['message']?.toString() ??
-              'Payment initialization failed.',
+          result['message']?.toString() ?? 'Payment initialization failed.',
         );
       }
 
@@ -453,9 +353,7 @@ class ApiService {
         rethrow;
       }
 
-      throw Exception(
-        'Unable to connect to payment server.',
-      );
+      throw Exception('Unable to connect to payment server.');
     }
   }
 
@@ -463,22 +361,17 @@ class ApiService {
   // VERIFY PAYSTACK PAYMENT
   // =========================================================
 
-  static Future<Map<String, dynamic>>
-      verifyPayment({
+  static Future<Map<String, dynamic>> verifyPayment({
     required String reference,
   }) async {
     try {
-      final cleanReference =
-          reference.trim();
+      final cleanReference = reference.trim();
 
       if (cleanReference.isEmpty) {
-        throw Exception(
-          'Payment reference is required.',
-        );
+        throw Exception('Payment reference is required.');
       }
 
-      final headers =
-          await _authenticatedHeaders();
+      final headers = await _authenticatedHeaders();
 
       final response = await http
           .get(
@@ -488,33 +381,24 @@ class ApiService {
             ),
             headers: headers,
           )
-          .timeout(
-            const Duration(seconds: 30),
-          );
+          .timeout(const Duration(seconds: 30));
 
       dynamic data;
 
       try {
-        data = jsonDecode(
-          response.body,
-        );
+        data = jsonDecode(response.body);
       } catch (_) {
-        throw Exception(
-          'Invalid payment verification response.',
-        );
+        throw Exception('Invalid payment verification response.');
       }
 
       if (response.statusCode != 200) {
-        String message =
-            'Payment verification failed.';
+        String message = 'Payment verification failed.';
 
         if (data is Map) {
           if (data['message'] != null) {
-            message =
-                data['message'].toString();
+            message = data['message'].toString();
           } else if (data['error'] != null) {
-            message =
-                data['error'].toString();
+            message = data['error'].toString();
           }
         }
 
@@ -522,20 +406,14 @@ class ApiService {
       }
 
       if (data is! Map) {
-        throw Exception(
-          'Invalid payment verification response.',
-        );
+        throw Exception('Invalid payment verification response.');
       }
 
-      final result =
-          Map<String, dynamic>.from(
-        data,
-      );
+      final result = Map<String, dynamic>.from(data);
 
       if (result['success'] != true) {
         throw Exception(
-          result['message']?.toString() ??
-              'Payment verification failed.',
+          result['message']?.toString() ?? 'Payment verification failed.',
         );
       }
 
@@ -545,9 +423,7 @@ class ApiService {
         rethrow;
       }
 
-      throw Exception(
-        'Unable to connect to payment server.',
-      );
+      throw Exception('Unable to connect to payment server.');
     }
   }
 
@@ -555,31 +431,19 @@ class ApiService {
   // GET CUSTOMER ORDERS
   // =========================================================
 
-  static Future<List<Order>> getOrders(
-    int customerId,
-  ) async {
+  static Future<List<Order>> getOrders(int customerId) async {
     try {
-      final headers =
-          await _authenticatedHeaders();
+      final headers = await _authenticatedHeaders();
 
       final response = await http
-          .get(
-            Uri.parse(
-              '$baseUrl/api/orders/$customerId',
-            ),
-            headers: headers,
-          )
-          .timeout(
-            const Duration(seconds: 15),
-          );
+          .get(Uri.parse('$baseUrl/api/orders/$customerId'), headers: headers)
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode != 200) {
         dynamic data;
 
         try {
-          data = jsonDecode(
-            response.body,
-          );
+          data = jsonDecode(response.body);
         } catch (_) {
           data = null;
         }
@@ -588,56 +452,39 @@ class ApiService {
             'Failed to load orders. '
             'Server returned ${response.statusCode}.';
 
-        if (data is Map &&
-            data['message'] != null) {
-          message =
-              data['message'].toString();
+        if (data is Map && data['message'] != null) {
+          message = data['message'].toString();
         }
 
         throw Exception(message);
       }
 
-      final dynamic data =
-          jsonDecode(response.body);
+      final dynamic data = jsonDecode(response.body);
 
       List<dynamic>? ordersData;
 
       if (data is List) {
         ordersData = data;
-      } else if (data is Map &&
-          data['orders'] is List) {
-        ordersData =
-            data['orders'] as List;
-      } else if (data is Map &&
-          data['value'] is List) {
-        ordersData =
-            data['value'] as List;
+      } else if (data is Map && data['orders'] is List) {
+        ordersData = data['orders'] as List;
+      } else if (data is Map && data['value'] is List) {
+        ordersData = data['value'] as List;
       }
 
       if (ordersData == null) {
-        throw Exception(
-          'Invalid orders response from server.',
-        );
+        throw Exception('Invalid orders response from server.');
       }
 
       return ordersData
           .whereType<Map>()
-          .map(
-            (json) => Order.fromJson(
-              Map<String, dynamic>.from(
-                json,
-              ),
-            ),
-          )
+          .map((json) => Order.fromJson(Map<String, dynamic>.from(json)))
           .toList();
     } catch (e) {
       if (e is Exception) {
         rethrow;
       }
 
-      throw Exception(
-        'Unable to connect to Levetor Hub server.',
-      );
+      throw Exception('Unable to connect to Levetor Hub server.');
     }
   }
 
@@ -645,23 +492,14 @@ class ApiService {
   // IMAGE URL
   // =========================================================
 
-  static String getImageUrl(
-    String? imageName,
-  ) {
-    if (imageName == null ||
-        imageName.trim().isEmpty) {
+  static String getImageUrl(String? imageName) {
+    if (imageName == null || imageName.trim().isEmpty) {
       return '';
     }
 
-    final cleanName =
-        imageName.trim();
+    final cleanName = imageName.trim();
 
-    if (cleanName.startsWith(
-          'http://',
-        ) ||
-        cleanName.startsWith(
-          'https://',
-        )) {
+    if (cleanName.startsWith('http://') || cleanName.startsWith('https://')) {
       return cleanName;
     }
 
@@ -672,62 +510,55 @@ class ApiService {
   // REGISTER CUSTOMER
   // =========================================================
 
-  static Future<Map<String, dynamic>>
-      registerCustomer({
+  static Future<Map<String, dynamic>> registerCustomer({
     required String fullname,
     required String email,
     required String phone,
     required String address,
     required String password,
     required String confirmPassword,
+    String? referralCode,
   }) async {
     try {
+      final requestBody = <String, dynamic>{
+        'fullname': fullname,
+        'email': email,
+        'phone': phone,
+        'address': address,
+        'password': password,
+        'confirm_password': confirmPassword,
+      };
+
+      final cleanReferralCode = referralCode?.trim().toUpperCase();
+
+      if (cleanReferralCode != null && cleanReferralCode.isNotEmpty) {
+        requestBody['referral_code'] = cleanReferralCode;
+      }
+
       final response = await http
           .post(
-            Uri.parse(
-              '$baseUrl/api/register',
-            ),
-            headers: {
-              'Content-Type':
-                  'application/json',
-            },
-            body: jsonEncode({
-              'fullname': fullname,
-              'email': email,
-              'phone': phone,
-              'address': address,
-              'password': password,
-              'confirm_password':
-                  confirmPassword,
-            }),
+            Uri.parse('$baseUrl/api/register'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(requestBody),
           )
-          .timeout(
-            const Duration(seconds: 20),
-          );
+          .timeout(const Duration(seconds: 20));
 
       dynamic data;
 
       try {
-        data = jsonDecode(
-          response.body,
-        );
+        data = jsonDecode(response.body);
       } catch (_) {
-        throw Exception(
-          'Invalid response received from server.',
-        );
+        throw Exception('Invalid response received from server.');
       }
 
       if (response.statusCode != 201) {
-        String message =
-            'Registration failed.';
+        String message = 'Registration failed.';
 
         if (data is Map) {
           if (data['message'] != null) {
-            message =
-                data['message'].toString();
+            message = data['message'].toString();
           } else if (data['error'] != null) {
-            message =
-                data['error'].toString();
+            message = data['error'].toString();
           }
         }
 
@@ -735,103 +566,12 @@ class ApiService {
       }
 
       if (data is! Map) {
-        throw Exception(
-          'Invalid registration response from server.',
-        );
+        throw Exception('Invalid registration response from server.');
       }
 
-      return Map<String, dynamic>.from(
-        data,
-      );
-    } catch (e) {
-      if (e is Exception) {
-        rethrow;
-      }
+      final result = Map<String, dynamic>.from(data);
 
-      throw Exception(
-        'Unable to connect to Levetor Hub server.',
-      );
-    }
-  }
-
-  // =========================================================
-  // LOGIN CUSTOMER
-  // =========================================================
-
-  static Future<Map<String, dynamic>>
-      loginCustomer({
-    required String email,
-    required String password,
-  }) async {
-    try {
-      final response = await http
-          .post(
-            Uri.parse(
-              '$baseUrl/api/login',
-            ),
-            headers: {
-              'Content-Type':
-                  'application/json',
-            },
-            body: jsonEncode({
-              'email': email,
-              'password': password,
-            }),
-          )
-          .timeout(
-            const Duration(seconds: 20),
-          );
-
-      dynamic data;
-
-      try {
-        data = jsonDecode(
-          response.body,
-        );
-      } catch (_) {
-        throw Exception(
-          'Invalid response received from server.',
-        );
-      }
-
-      if (response.statusCode != 200) {
-        String message =
-            'Login failed.';
-
-        if (data is Map) {
-          if (data['message'] != null) {
-            message =
-                data['message'].toString();
-          } else if (data['error'] != null) {
-            message =
-                data['error'].toString();
-          }
-        }
-
-        throw Exception(message);
-      }
-
-      if (data is! Map) {
-        throw Exception(
-          'Invalid login response from server.',
-        );
-      }
-
-      final result =
-          Map<String, dynamic>.from(
-        data,
-      );
-
-      if (result['success'] == false) {
-        throw Exception(
-          result['message']?.toString() ??
-              'Login failed.',
-        );
-      }
-
-      await _saveAuthTokenFromResponse(
-        result,
-      );
+      await _saveAuthTokenFromResponse(result);
 
       return result;
     } catch (e) {
@@ -839,9 +579,68 @@ class ApiService {
         rethrow;
       }
 
-      throw Exception(
-        'Unable to connect to Levetor Hub server.',
-      );
+      throw Exception('Unable to connect to Levetor Hub server.');
+    }
+  }
+
+  // =========================================================
+  // LOGIN CUSTOMER
+  // =========================================================
+
+  static Future<Map<String, dynamic>> loginCustomer({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/login'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email, 'password': password}),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      dynamic data;
+
+      try {
+        data = jsonDecode(response.body);
+      } catch (_) {
+        throw Exception('Invalid response received from server.');
+      }
+
+      if (response.statusCode != 200) {
+        String message = 'Login failed.';
+
+        if (data is Map) {
+          if (data['message'] != null) {
+            message = data['message'].toString();
+          } else if (data['error'] != null) {
+            message = data['error'].toString();
+          }
+        }
+
+        throw Exception(message);
+      }
+
+      if (data is! Map) {
+        throw Exception('Invalid login response from server.');
+      }
+
+      final result = Map<String, dynamic>.from(data);
+
+      if (result['success'] == false) {
+        throw Exception(result['message']?.toString() ?? 'Login failed.');
+      }
+
+      await _saveAuthTokenFromResponse(result);
+
+      return result;
+    } catch (e) {
+      if (e is Exception) {
+        rethrow;
+      }
+
+      throw Exception('Unable to connect to Levetor Hub server.');
     }
   }
 
@@ -849,66 +648,115 @@ class ApiService {
   // GET CUSTOMER
   // =========================================================
 
-  static Future<Customer> getCustomer(
-    int customerId,
-  ) async {
+  static Future<Customer> getCustomer(int customerId) async {
     try {
-      final headers =
-          await _authenticatedHeaders();
+      final headers = await _authenticatedHeaders();
 
       final response = await http
           .get(
-            Uri.parse(
-              '$baseUrl/api/customers/$customerId',
-            ),
+            Uri.parse('$baseUrl/api/customers/$customerId'),
             headers: headers,
           )
-          .timeout(
-            const Duration(seconds: 20),
-          );
+          .timeout(const Duration(seconds: 20));
 
       dynamic data;
 
       try {
-        data = jsonDecode(
-          response.body,
-        );
+        data = jsonDecode(response.body);
       } catch (_) {
-        throw Exception(
-          'Invalid response received from server.',
-        );
+        throw Exception('Invalid response received from server.');
       }
 
       if (response.statusCode != 200) {
         throw Exception(
-          data is Map &&
-                  data['message'] != null
+          data is Map && data['message'] != null
               ? data['message'].toString()
               : 'Failed to load customer profile.',
         );
       }
 
-      if (data is! Map ||
-          data['customer'] is! Map) {
-        throw Exception(
-          'Invalid customer profile received from server.',
-        );
+      if (data is! Map || data['customer'] is! Map) {
+        throw Exception('Invalid customer profile received from server.');
       }
 
-      return Customer.fromJson(
-        Map<String, dynamic>.from(
-          data['customer'],
-        ),
-      );
+      return Customer.fromJson(Map<String, dynamic>.from(data['customer']));
     } catch (e) {
       if (e is Exception) {
         rethrow;
       }
 
-      throw Exception(
-        'Unable to connect to Levetor Hub server.',
-      );
+      throw Exception('Unable to connect to Levetor Hub server.');
     }
+  }
+
+  // =========================================================
+  // GET CUSTOMER REFERRAL INFORMATION
+  // =========================================================
+
+  static Future<Map<String, dynamic>> getReferralInfo(int customerId) async {
+    try {
+      final headers = await _authenticatedHeaders();
+
+      if (!headers.containsKey('Authorization')) {
+        throw Exception('Authentication required. Please login again.');
+      }
+
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/referrals/$customerId'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 20));
+
+      dynamic data;
+
+      try {
+        data = jsonDecode(response.body);
+      } catch (_) {
+        throw Exception('Invalid referral information received from server.');
+      }
+
+      if (response.statusCode != 200) {
+        throw Exception(
+          data is Map && data['message'] != null
+              ? data['message'].toString()
+              : 'Failed to load referral information.',
+        );
+      }
+
+      if (data is! Map) {
+        throw Exception('Invalid referral information received from server.');
+      }
+
+      final result = Map<String, dynamic>.from(data);
+
+      if (result['success'] != true) {
+        throw Exception(
+          result['message']?.toString() ??
+              'Failed to load referral information.',
+        );
+      }
+
+      return result;
+    } catch (e) {
+      if (e is Exception) {
+        rethrow;
+      }
+
+      throw Exception('Unable to connect to the referral service.');
+    }
+  }
+
+  // =========================================================
+  // GET CUSTOMER REFERRALS
+  // =========================================================
+  //
+  // Alias kept for the ReferralScreen.
+  // Uses the same verified backend endpoint as getReferralInfo().
+  //
+
+  static Future<Map<String, dynamic>> getReferrals(int customerId) async {
+    return getReferralInfo(customerId);
   }
 
   // =========================================================
@@ -923,16 +771,11 @@ class ApiService {
     required String address,
   }) async {
     try {
-      final headers =
-          await _authenticatedHeaders(
-        includeJson: true,
-      );
+      final headers = await _authenticatedHeaders(includeJson: true);
 
       final response = await http
           .put(
-            Uri.parse(
-              '$baseUrl/api/customers/$customerId',
-            ),
+            Uri.parse('$baseUrl/api/customers/$customerId'),
             headers: headers,
             body: jsonEncode({
               'fullname': fullname,
@@ -941,51 +784,35 @@ class ApiService {
               'address': address,
             }),
           )
-          .timeout(
-            const Duration(seconds: 20),
-          );
+          .timeout(const Duration(seconds: 20));
 
       dynamic data;
 
       try {
-        data = jsonDecode(
-          response.body,
-        );
+        data = jsonDecode(response.body);
       } catch (_) {
-        throw Exception(
-          'Invalid response received from server.',
-        );
+        throw Exception('Invalid response received from server.');
       }
 
       if (response.statusCode != 200) {
         throw Exception(
-          data is Map &&
-                  data['message'] != null
+          data is Map && data['message'] != null
               ? data['message'].toString()
               : 'Failed to update customer profile.',
         );
       }
 
-      if (data is! Map ||
-          data['customer'] is! Map) {
-        throw Exception(
-          'Invalid customer profile received from server.',
-        );
+      if (data is! Map || data['customer'] is! Map) {
+        throw Exception('Invalid customer profile received from server.');
       }
 
-      return Customer.fromJson(
-        Map<String, dynamic>.from(
-          data['customer'],
-        ),
-      );
+      return Customer.fromJson(Map<String, dynamic>.from(data['customer']));
     } catch (e) {
       if (e is Exception) {
         rethrow;
       }
 
-      throw Exception(
-        'Unable to connect to Levetor Hub server.',
-      );
+      throw Exception('Unable to connect to Levetor Hub server.');
     }
   }
 
@@ -993,60 +820,40 @@ class ApiService {
   // GOOGLE LOGIN
   // =========================================================
 
-  static Future<Map<String, dynamic>>
-      googleLogin({
+  static Future<Map<String, dynamic>> googleLogin({
     required String idToken,
   }) async {
     try {
-      final cleanToken =
-          idToken.trim();
+      final cleanToken = idToken.trim();
 
       if (cleanToken.isEmpty) {
-        throw Exception(
-          'Google authentication token is missing.',
-        );
+        throw Exception('Google authentication token is missing.');
       }
 
       final response = await http
           .post(
-            Uri.parse(
-              '$baseUrl/api/auth/google',
-            ),
-            headers: {
-              'Content-Type':
-                  'application/json',
-            },
-            body: jsonEncode({
-              'id_token': cleanToken,
-            }),
+            Uri.parse('$baseUrl/api/auth/google'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'id_token': cleanToken}),
           )
-          .timeout(
-            const Duration(seconds: 20),
-          );
+          .timeout(const Duration(seconds: 20));
 
       dynamic data;
 
       try {
-        data = jsonDecode(
-          response.body,
-        );
+        data = jsonDecode(response.body);
       } catch (_) {
-        throw Exception(
-          'Invalid Google authentication response.',
-        );
+        throw Exception('Invalid Google authentication response.');
       }
 
       if (response.statusCode != 200) {
-        String message =
-            'Google login failed.';
+        String message = 'Google login failed.';
 
         if (data is Map) {
           if (data['message'] != null) {
-            message =
-                data['message'].toString();
+            message = data['message'].toString();
           } else if (data['error'] != null) {
-            message =
-                data['error'].toString();
+            message = data['error'].toString();
           }
         }
 
@@ -1054,26 +861,18 @@ class ApiService {
       }
 
       if (data is! Map) {
-        throw Exception(
-          'Invalid Google authentication response.',
-        );
+        throw Exception('Invalid Google authentication response.');
       }
 
-      final result =
-          Map<String, dynamic>.from(
-        data,
-      );
+      final result = Map<String, dynamic>.from(data);
 
       if (result['success'] != true) {
         throw Exception(
-          result['message']?.toString() ??
-              'Google login failed.',
+          result['message']?.toString() ?? 'Google login failed.',
         );
       }
 
-      await _saveAuthTokenFromResponse(
-        result,
-      );
+      await _saveAuthTokenFromResponse(result);
 
       return result;
     } catch (e) {
@@ -1081,9 +880,7 @@ class ApiService {
         rethrow;
       }
 
-      throw Exception(
-        'Unable to connect to Google authentication server.',
-      );
+      throw Exception('Unable to connect to Google authentication server.');
     }
   }
 
@@ -1091,60 +888,40 @@ class ApiService {
   // FORGOT PASSWORD
   // =========================================================
 
-  static Future<Map<String, dynamic>>
-      forgotPassword({
+  static Future<Map<String, dynamic>> forgotPassword({
     required String email,
   }) async {
     try {
-      final cleanEmail =
-          email.trim();
+      final cleanEmail = email.trim();
 
       if (cleanEmail.isEmpty) {
-        throw Exception(
-          'Email address is required.',
-        );
+        throw Exception('Email address is required.');
       }
 
       final response = await http
           .post(
-            Uri.parse(
-              '$baseUrl/api/forgot-password',
-            ),
-            headers: {
-              'Content-Type':
-                  'application/json',
-            },
-            body: jsonEncode({
-              'email': cleanEmail,
-            }),
+            Uri.parse('$baseUrl/api/forgot-password'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': cleanEmail}),
           )
-          .timeout(
-            const Duration(seconds: 20),
-          );
+          .timeout(const Duration(seconds: 20));
 
       dynamic data;
 
       try {
-        data = jsonDecode(
-          response.body,
-        );
+        data = jsonDecode(response.body);
       } catch (_) {
-        throw Exception(
-          'Invalid password reset response.',
-        );
+        throw Exception('Invalid password reset response.');
       }
 
       if (response.statusCode != 200) {
-        String message =
-            'Password reset request failed.';
+        String message = 'Password reset request failed.';
 
         if (data is Map) {
           if (data['message'] != null) {
-            message =
-                data['message'].toString();
+            message = data['message'].toString();
           } else if (data['error'] != null) {
-            message =
-                data['error'].toString();
+            message = data['error'].toString();
           }
         }
 
@@ -1152,20 +929,14 @@ class ApiService {
       }
 
       if (data is! Map) {
-        throw Exception(
-          'Invalid password reset response.',
-        );
+        throw Exception('Invalid password reset response.');
       }
 
-      final result =
-          Map<String, dynamic>.from(
-        data,
-      );
+      final result = Map<String, dynamic>.from(data);
 
       if (result['success'] != true) {
         throw Exception(
-          result['message']?.toString() ??
-              'Password reset request failed.',
+          result['message']?.toString() ?? 'Password reset request failed.',
         );
       }
 
@@ -1175,9 +946,7 @@ class ApiService {
         rethrow;
       }
 
-      throw Exception(
-        'Unable to connect to password reset server.',
-      );
+      throw Exception('Unable to connect to password reset server.');
     }
   }
 
@@ -1190,17 +959,13 @@ class ApiService {
     required String fcmToken,
   }) async {
     try {
-      final cleanToken =
-          fcmToken.trim();
+      final cleanToken = fcmToken.trim();
 
       if (cleanToken.isEmpty) {
         return false;
       }
 
-      final headers =
-          await _authenticatedHeaders(
-        includeJson: true,
-      );
+      final headers = await _authenticatedHeaders(includeJson: true);
 
       final response = await http
           .post(
@@ -1209,20 +974,14 @@ class ApiService {
               '$customerId/fcm-token',
             ),
             headers: headers,
-            body: jsonEncode({
-              'fcm_token': cleanToken,
-            }),
+            body: jsonEncode({'fcm_token': cleanToken}),
           )
-          .timeout(
-            const Duration(seconds: 20),
-          );
+          .timeout(const Duration(seconds: 20));
 
       dynamic data;
 
       try {
-        data = jsonDecode(
-          response.body,
-        );
+        data = jsonDecode(response.body);
       } catch (_) {
         return false;
       }
@@ -1233,8 +992,7 @@ class ApiService {
           '${response.statusCode}',
         );
 
-        if (data is Map &&
-            data['message'] != null) {
+        if (data is Map && data['message'] != null) {
           debugPrint(
             'FCM server message: '
             '${data['message']}',
@@ -1248,10 +1006,7 @@ class ApiService {
         return false;
       }
 
-      final result =
-          Map<String, dynamic>.from(
-        data,
-      );
+      final result = Map<String, dynamic>.from(data);
 
       if (result['success'] != true) {
         debugPrint(
@@ -1269,9 +1024,7 @@ class ApiService {
 
       return true;
     } catch (e) {
-      debugPrint(
-        'Unable to register FCM token: $e',
-      );
+      debugPrint('Unable to register FCM token: $e');
 
       return false;
     }
@@ -1281,13 +1034,9 @@ class ApiService {
   // GET CUSTOMER NOTIFICATIONS
   // =========================================================
 
-  static Future<Map<String, dynamic>>
-      getNotifications(
-    int customerId,
-  ) async {
+  static Future<Map<String, dynamic>> getNotifications(int customerId) async {
     try {
-      final headers =
-          await _authenticatedHeaders();
+      final headers = await _authenticatedHeaders();
 
       final response = await http
           .get(
@@ -1297,46 +1046,33 @@ class ApiService {
             ),
             headers: headers,
           )
-          .timeout(
-            const Duration(seconds: 20),
-          );
+          .timeout(const Duration(seconds: 20));
 
       dynamic data;
 
       try {
-        data = jsonDecode(
-          response.body,
-        );
+        data = jsonDecode(response.body);
       } catch (_) {
-        throw Exception(
-          'Invalid notification response from server.',
-        );
+        throw Exception('Invalid notification response from server.');
       }
 
       if (response.statusCode != 200) {
         throw Exception(
-          data is Map &&
-                  data['message'] != null
+          data is Map && data['message'] != null
               ? data['message'].toString()
               : 'Failed to load notifications.',
         );
       }
 
       if (data is! Map) {
-        throw Exception(
-          'Invalid notification data received from server.',
-        );
+        throw Exception('Invalid notification data received from server.');
       }
 
-      final result =
-          Map<String, dynamic>.from(
-        data,
-      );
+      final result = Map<String, dynamic>.from(data);
 
       if (result['success'] != true) {
         throw Exception(
-          result['message']?.toString() ??
-              'Failed to load notifications.',
+          result['message']?.toString() ?? 'Failed to load notifications.',
         );
       }
 
@@ -1346,9 +1082,7 @@ class ApiService {
         rethrow;
       }
 
-      throw Exception(
-        'Unable to connect to notification server.',
-      );
+      throw Exception('Unable to connect to notification server.');
     }
   }
 
@@ -1361,10 +1095,7 @@ class ApiService {
     required int notificationId,
   }) async {
     try {
-      final headers =
-          await _authenticatedHeaders(
-        includeJson: true,
-      );
+      final headers = await _authenticatedHeaders(includeJson: true);
 
       final response = await http
           .put(
@@ -1375,16 +1106,12 @@ class ApiService {
             ),
             headers: headers,
           )
-          .timeout(
-            const Duration(seconds: 20),
-          );
+          .timeout(const Duration(seconds: 20));
 
       dynamic data;
 
       try {
-        data = jsonDecode(
-          response.body,
-        );
+        data = jsonDecode(response.body);
       } catch (_) {
         return false;
       }
@@ -1397,10 +1124,7 @@ class ApiService {
         return false;
       }
 
-      final result =
-          Map<String, dynamic>.from(
-        data,
-      );
+      final result = Map<String, dynamic>.from(data);
 
       return result['success'] == true;
     } catch (_) {
@@ -1412,15 +1136,9 @@ class ApiService {
   // MARK ALL NOTIFICATIONS AS READ
   // =========================================================
 
-  static Future<bool>
-      markAllNotificationsAsRead(
-    int customerId,
-  ) async {
+  static Future<bool> markAllNotificationsAsRead(int customerId) async {
     try {
-      final headers =
-          await _authenticatedHeaders(
-        includeJson: true,
-      );
+      final headers = await _authenticatedHeaders(includeJson: true);
 
       final response = await http
           .put(
@@ -1430,16 +1148,12 @@ class ApiService {
             ),
             headers: headers,
           )
-          .timeout(
-            const Duration(seconds: 20),
-          );
+          .timeout(const Duration(seconds: 20));
 
       dynamic data;
 
       try {
-        data = jsonDecode(
-          response.body,
-        );
+        data = jsonDecode(response.body);
       } catch (_) {
         return false;
       }
@@ -1452,14 +1166,105 @@ class ApiService {
         return false;
       }
 
-      final result =
-          Map<String, dynamic>.from(
-        data,
-      );
+      final result = Map<String, dynamic>.from(data);
 
       return result['success'] == true;
     } catch (_) {
       return false;
+    }
+  }
+
+  // =========================================================
+  // LEVETOR HUB AI ASSISTANT
+  // =========================================================
+
+  static Future<Map<String, dynamic>> askAIAssistant({
+    required String message,
+  }) async {
+    try {
+      final cleanMessage = message.trim();
+
+      if (cleanMessage.isEmpty) {
+        throw Exception('Please enter a message.');
+      }
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/ai/assistant'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'message': cleanMessage}),
+          )
+          .timeout(const Duration(seconds: 60));
+
+      dynamic data;
+
+      try {
+        data = jsonDecode(response.body);
+      } catch (_) {
+        throw Exception('Invalid AI assistant response from server.');
+      }
+
+      if (response.statusCode != 200) {
+        String errorMessage = 'AI Assistant is temporarily unavailable.';
+
+        if (data is Map) {
+          if (data['error'] != null) {
+            errorMessage = data['error'].toString();
+          } else if (data['message'] != null) {
+            errorMessage = data['message'].toString();
+          }
+        }
+
+        throw Exception(errorMessage);
+      }
+
+      if (data is! Map) {
+        throw Exception('Invalid AI assistant response.');
+      }
+
+      final result = Map<String, dynamic>.from(data);
+
+      if (result['success'] != true) {
+        throw Exception(
+          result['error']?.toString() ??
+              result['message']?.toString() ??
+              'AI Assistant request failed.',
+        );
+      }
+
+      final assistantMessage = result['message']?.toString().trim();
+
+      if (assistantMessage == null || assistantMessage.isEmpty) {
+        throw Exception('The AI assistant returned an empty response.');
+      }
+
+      final rawProductIds = result['product_ids'];
+
+      final List<int> productIds = [];
+
+      if (rawProductIds is List) {
+        for (final value in rawProductIds) {
+          final productId = int.tryParse(value.toString());
+
+          if (productId != null &&
+              productId > 0 &&
+              !productIds.contains(productId)) {
+            productIds.add(productId);
+          }
+        }
+      }
+
+      return {
+        'message': assistantMessage,
+        'product_ids': productIds,
+        'model': result['model']?.toString(),
+      };
+    } catch (e) {
+      if (e is Exception) {
+        rethrow;
+      }
+
+      throw Exception('Unable to connect to Levetor Hub AI Assistant.');
     }
   }
 }

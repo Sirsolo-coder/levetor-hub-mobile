@@ -1,51 +1,61 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
+# =========================================================
+# FLUTTER / DART
+# =========================================================
 
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
-
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
 .dart_tool/
-.flutter-plugins-dependencies
+.packages
 .pub-cache/
 .pub/
-/build/
-/coverage/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
 
-# Symbolication related
-app.*.symbols
+# =========================================================
+# ENVIRONMENT / SECRETS
+# =========================================================
 
-# Obfuscation related
-app.*.map.json
+.env
+.env.*
+!.env.example
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+# =========================================================
+# FIREBASE CONFIGURATION
+# =========================================================
 
-# Widget Preview related
-.widget_preview/
-# Local project artifacts
+google-services.json
+GoogleService-Info.plist
+*firebase-adminsdk*.json
+firebase-service-account*.json
+
+# =========================================================
+# ANDROID LOCAL / SIGNING
+# =========================================================
+
+android/local.properties
+android/key.properties
+*.jks
+*.keystore
+
+# =========================================================
+# IDE
+# =========================================================
+
+.idea/
+.vscode/
+*.iml
+
+# =========================================================
+# LOGS
+# =========================================================
+
+*.log
+
+# =========================================================
+# OS
+# =========================================================
+
+.DS_Store
+Thumbs.db
+
 analyze_errors.txt
-levetor_hub_mobile/

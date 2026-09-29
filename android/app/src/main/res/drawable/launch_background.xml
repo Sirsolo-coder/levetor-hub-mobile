@@ -5,6 +5,8 @@
 
     <item
         android:gravity="center"
-        android:drawable="@drawable/levetor_l" />
+        android:drawable="@drawable/levetor_logo_small" />
 
 </layer-list>
+
+
