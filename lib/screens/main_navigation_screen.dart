@@ -29,13 +29,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   static const String whatsappNumber = '2349131542208';
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    AccountScreen(),
-    OrdersScreen(),
-    NotificationScreen(),
-    CartScreen(),
+  late final List<Widget> _screens;
+
+@override
+void initState() {
+  super.initState();
+
+  _screens = [
+    const HomeScreen(),
+    const AccountScreen(),
+    const OrdersScreen(),
+    const NotificationScreen(),
+    CartScreen(
+      onContinueShopping: () {
+        setState(() {
+          _selectedIndex = 0;
+        });
+      },
+    ),
   ];
+}
 
   Future<void> _openWhatsApp() async {
     final Uri url = Uri.parse(

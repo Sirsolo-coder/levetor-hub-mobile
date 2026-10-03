@@ -6,8 +6,12 @@ import '../services/api_service.dart';
 import 'checkout_screen.dart';
 
 class CartScreen extends StatelessWidget {
-  const CartScreen({super.key});
+  final VoidCallback? onContinueShopping;
 
+  const CartScreen({
+    super.key,
+    this.onContinueShopping,
+  });
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
@@ -500,16 +504,20 @@ class CartScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             OutlinedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              icon: const Icon(
-                Icons.shopping_bag_outlined,
-              ),
-              label: const Text(
-                'Continue Shopping',
-              ),
-            ),
+  onPressed: () {
+    if (onContinueShopping != null) {
+      onContinueShopping!();
+    } else {
+      Navigator.of(context).pop();
+    }
+  },
+  icon: const Icon(
+    Icons.shopping_bag_outlined,
+  ),
+  label: const Text(
+    'Continue Shopping',
+  ),
+),
           ],
         ),
       ),
